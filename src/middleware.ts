@@ -16,18 +16,8 @@ export function middleware(request: NextRequest) {
     return NextResponse.next();
   }
 
-  // Determine locale from cookie or header
-  const savedLocale = request.cookies.get('quiet_life_locale')?.value;
-  let targetLocale = DEFAULT_LOCALE;
-
-  if (savedLocale && LOCALES.includes(savedLocale)) {
-    targetLocale = savedLocale;
-  } else {
-    const acceptLanguage = request.headers.get('accept-language');
-    if (acceptLanguage && acceptLanguage.toLowerCase().startsWith('fr')) {
-      targetLocale = 'fr';
-    }
-  }
+  // Always default to English ('en') when no locale is specified in the URL
+  const targetLocale = DEFAULT_LOCALE;
 
   // Redirect to localized URL (e.g. / -> /en, /articles -> /en/articles)
   const newPathname = pathname === '/' ? `/${targetLocale}` : `/${targetLocale}${pathname}`;
