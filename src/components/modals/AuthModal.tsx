@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import { useRouter } from 'next/navigation';
 import { Dialog, DialogContent, Typography, TextField, Button, IconButton, Chip, Box, Avatar, LinearProgress, CircularProgress } from '@mui/material';
 import CloseIcon from '@mui/icons-material/Close';
 import CheckCircleIcon from '@mui/icons-material/CheckCircle';
@@ -24,19 +25,11 @@ interface AuthModalProps {
 }
 
 export function AuthModal({ open, onClose, initialMode = 'signin' }: AuthModalProps) {
+  const router = useRouter();
   const { locale, categories, setUser } = useApp();
   const t = DICTIONARY[locale];
   const [mode, setMode] = useState<'signin' | 'signup'>(initialMode);
   const [step, setStep] = useState<1 | 2 | 3>(1);
-
-  // Sync mode whenever modal is opened or initialMode changes
-  useEffect(() => {
-    if (open) {
-      setMode(initialMode);
-      setStep(1);
-      setErrorMsg('');
-    }
-  }, [open, initialMode]);
 
   // Form State
   const [fullName, setFullName] = useState('');
@@ -47,6 +40,23 @@ export function AuthModal({ open, onClose, initialMode = 'signin' }: AuthModalPr
   const [selectedCategoryIds, setSelectedCategoryIds] = useState<string[]>([]);
   const [errorMsg, setErrorMsg] = useState('');
   const [loading, setLoading] = useState(false);
+
+  const handleSuccessAuth = (role: 'admin' | 'user') => {
+    setLoading(false);
+    onClose();
+    if (role === 'admin') {
+      router.push(`/${locale}/admin/dashboard`);
+    }
+  };
+
+  // Sync mode whenever modal is opened or initialMode changes
+  useEffect(() => {
+    if (open) {
+      setMode(initialMode);
+      setStep(1);
+      setErrorMsg('');
+    }
+  }, [open, initialMode]);
 
   const handleStep1Next = (e: React.FormEvent) => {
     e.preventDefault();
@@ -93,17 +103,17 @@ export function AuthModal({ open, onClose, initialMode = 'signin' }: AuthModalPr
         }
 
         if (data.user) {
+          const userRole = email.trim().toLowerCase() === 'nyagaandreroy@gmail.com' ? 'admin' : 'user';
           setUser({
             id: data.user.id,
             full_name: fullName || 'Mindful Reader',
             avatar_url: avatarUrl,
-            role: email.trim().toLowerCase() === 'nyagaandreroy@gmail.com' ? 'admin' : 'user',
+            role: userRole,
             onboarding_completed: true,
             created_at: data.user.created_at,
             updated_at: new Date().toISOString(),
           });
-          setLoading(false);
-          onClose();
+          handleSuccessAuth(userRole);
           return;
         }
       } catch (err: any) {
@@ -112,17 +122,17 @@ export function AuthModal({ open, onClose, initialMode = 'signin' }: AuthModalPr
     }
 
     // Local fallback
+    const fallbackRole = email.trim().toLowerCase() === 'nyagaandreroy@gmail.com' ? 'admin' : 'user';
     setUser({
       id: `user-${Date.now()}`,
       full_name: fullName || 'Mindful Reader',
       avatar_url: avatarUrl,
-      role: email.trim().toLowerCase() === 'nyagaandreroy@gmail.com' ? 'admin' : 'user',
+      role: fallbackRole,
       onboarding_completed: true,
       created_at: new Date().toISOString(),
       updated_at: new Date().toISOString(),
     });
-    setLoading(false);
-    onClose();
+    handleSuccessAuth(fallbackRole);
   };
 
   const handleLoginSubmit = async (e: React.FormEvent) => {
@@ -155,8 +165,7 @@ export function AuthModal({ open, onClose, initialMode = 'signin' }: AuthModalPr
               created_at: new Date().toISOString(),
               updated_at: new Date().toISOString(),
             });
-            setLoading(false);
-            onClose();
+            handleSuccessAuth('admin');
             return;
           }
           setErrorMsg(error.message);
@@ -171,19 +180,23 @@ export function AuthModal({ open, onClose, initialMode = 'signin' }: AuthModalPr
             .eq('id', data.user.id)
             .single();
 
-          const activeUser = profile || {
+          const userRole =
+            (profile?.role === 'admin' || email.trim().toLowerCase() === 'nyagaandreroy@gmail.com')
+              ? 'admin'
+              : (profile?.role || 'user');
+
+          const activeUser = {
             id: data.user.id,
-            full_name: data.user.user_metadata?.full_name || 'Andre Roy Nyaga',
-            avatar_url: data.user.user_metadata?.avatar_url || avatarUrl,
-            role: email.trim().toLowerCase() === 'nyagaandreroy@gmail.com' ? 'admin' : 'user',
+            full_name: profile?.full_name || data.user.user_metadata?.full_name || 'Andre Roy Nyaga',
+            avatar_url: profile?.avatar_url || data.user.user_metadata?.avatar_url || avatarUrl,
+            role: userRole,
             onboarding_completed: true,
             created_at: data.user.created_at,
             updated_at: new Date().toISOString(),
           };
 
           setUser(activeUser);
-          setLoading(false);
-          onClose();
+          handleSuccessAuth(userRole);
           return;
         }
       } catch (err: any) {
@@ -202,8 +215,7 @@ export function AuthModal({ open, onClose, initialMode = 'signin' }: AuthModalPr
         created_at: new Date().toISOString(),
         updated_at: new Date().toISOString(),
       });
-      setLoading(false);
-      onClose();
+      handleSuccessAuth('admin');
     } else {
       setErrorMsg('Invalid email or password.');
       setLoading(false);
