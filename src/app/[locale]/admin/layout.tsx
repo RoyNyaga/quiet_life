@@ -3,7 +3,7 @@
 import { ReactNode } from 'react';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
-import { Typography, List, ListItem, ListItemButton, ListItemIcon, ListItemText, Box, Button } from '@mui/material';
+import { Typography, List, ListItem, ListItemButton, ListItemIcon, ListItemText, Box, Button, CircularProgress } from '@mui/material';
 import DashboardIcon from '@mui/icons-material/Dashboard';
 import ArticleIcon from '@mui/icons-material/Article';
 import CategoryIcon from '@mui/icons-material/Category';
@@ -17,7 +17,16 @@ import { useApp } from '@/lib/store';
 export default function AdminLayout({ children }: { children: ReactNode }) {
   const pathname = usePathname();
   const router = useRouter();
-  const { user, locale } = useApp();
+  const { user, locale, isAuthReady } = useApp();
+
+  // Wait for auth initialization
+  if (!isAuthReady) {
+    return (
+      <Box className="min-h-screen flex items-center justify-center bg-[#FDFBF7]">
+        <CircularProgress sx={{ color: '#C88A79' }} />
+      </Box>
+    );
+  }
 
   // Protect Admin section
   if (!user || user.role !== 'admin') {

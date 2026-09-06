@@ -1,5 +1,6 @@
 import type { Metadata } from 'next';
 import './globals.css';
+import { Providers } from '@/components/providers/Providers';
 
 export const metadata: Metadata = {
   title: 'Quiet Life — Wellness, Personal Development & Mindful Living',
@@ -18,7 +19,9 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         />
       </head>
       <body className="bg-[#FDFBF7] text-[#2C2420] antialiased min-h-screen flex flex-col font-sans" suppressHydrationWarning>
-        {children}
+        <Providers>
+          {children}
+        </Providers>
       </body>
     </html>
   );

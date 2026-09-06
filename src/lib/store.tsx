@@ -11,6 +11,7 @@ interface AppContextType {
   setLocale: (locale: Locale) => void;
   user: Profile | null;
   setUser: (user: Profile | null) => void;
+  isAuthReady: boolean;
   signOut: () => Promise<void>;
   posts: Post[];
   categories: Category[];
@@ -45,7 +46,8 @@ export function AppProvider({ children, initialLocale = 'en' }: { children: Reac
   const router = useRouter();
   const pathname = usePathname();
   const [locale, setLocaleState] = useState<Locale>(initialLocale);
-  const [user, setUser] = useState<Profile | null>(null);
+  const [user, setUserState] = useState<Profile | null>(null);
+  const [isAuthReady, setIsAuthReady] = useState(false);
   const [posts, setPosts] = useState<Post[]>([]);
   const [categories, setCategories] = useState<Category[]>(INITIAL_CATEGORIES);
   const [tags, setTags] = useState<Tag[]>(INITIAL_TAGS);
@@ -53,6 +55,27 @@ export function AppProvider({ children, initialLocale = 'en' }: { children: Reac
   const [readingLists, setReadingLists] = useState<ReadingList[]>([]);
   const [readingListItems, setReadingListItems] = useState<ReadingListItem[]>([]);
   const [subscriptions, setSubscriptions] = useState<Subscription[]>([]);
+
+  const setUser = (newUser: Profile | null) => {
+    setUserState(newUser);
+    if (typeof window !== 'undefined') {
+      if (newUser) {
+        localStorage.setItem('quiet_life_user', JSON.stringify(newUser));
+      } else {
+        localStorage.removeItem('quiet_life_user');
+      }
+    }
+  };
+
+  // Sync locale with URL if route locale changes
+  useEffect(() => {
+    if (pathname) {
+      const seg = pathname.split('/')[1];
+      if ((seg === 'en' || seg === 'fr') && seg !== locale) {
+        setLocaleState(seg as Locale);
+      }
+    }
+  }, [pathname, locale]);
 
   // Load state and listen to Supabase auth / DB on mount
   useEffect(() => {
@@ -104,6 +127,8 @@ export function AppProvider({ children, initialLocale = 'en' }: { children: Reac
       }
     } catch (e) {
       console.warn('LocalStorage error:', e);
+    } finally {
+      setIsAuthReady(true);
     }
 
     // Connect with Supabase
@@ -443,6 +468,7 @@ export function AppProvider({ children, initialLocale = 'en' }: { children: Reac
         setLocale,
         user,
         setUser,
+        isAuthReady,
         signOut,
         posts,
         categories,
