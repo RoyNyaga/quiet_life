@@ -26,7 +26,7 @@ export function Navbar() {
   const [bookmarkOpen, setBookmarkOpen] = useState(false);
   const [searchOpen, setSearchOpen] = useState(false);
   const [authModalOpen, setAuthModalOpen] = useState(false);
-  const [authInitialMode, setAuthInitialMode] = useState<'signin' | 'signup'>('signup');
+  const [authInitialMode, setAuthInitialMode] = useState<'signin' | 'signup'>('signin');
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
 
@@ -217,6 +217,33 @@ export function Navbar() {
             </ListItem>
           )}
         </List>
+
+        {!user && (
+          <Box className="mt-4 pt-4 border-t border-cream-200 flex flex-col gap-2">
+            <Button
+              variant="outlined"
+              fullWidth
+              onClick={() => {
+                setMobileMenuOpen(false);
+                handleOpenAuth('signin');
+              }}
+              sx={{ borderColor: '#5C4438', color: '#5C4438' }}
+            >
+              {t.nav.signIn}
+            </Button>
+            <Button
+              variant="contained"
+              fullWidth
+              onClick={() => {
+                setMobileMenuOpen(false);
+                handleOpenAuth('signup');
+              }}
+              sx={{ bgcolor: '#C88A79', '&:hover': { bgcolor: '#A66E5E' } }}
+            >
+              {t.nav.signUp}
+            </Button>
+          </Box>
+        )}
       </Drawer>
 
       {/* Drawers & Modals */}

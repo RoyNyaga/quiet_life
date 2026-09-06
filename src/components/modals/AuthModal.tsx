@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Dialog, DialogContent, Typography, TextField, Button, IconButton, Chip, Box, Avatar, LinearProgress, CircularProgress } from '@mui/material';
 import CloseIcon from '@mui/icons-material/Close';
 import CheckCircleIcon from '@mui/icons-material/CheckCircle';
@@ -23,11 +23,20 @@ interface AuthModalProps {
   initialMode?: 'signin' | 'signup';
 }
 
-export function AuthModal({ open, onClose, initialMode = 'signup' }: AuthModalProps) {
+export function AuthModal({ open, onClose, initialMode = 'signin' }: AuthModalProps) {
   const { locale, categories, setUser } = useApp();
   const t = DICTIONARY[locale];
   const [mode, setMode] = useState<'signin' | 'signup'>(initialMode);
   const [step, setStep] = useState<1 | 2 | 3>(1);
+
+  // Sync mode whenever modal is opened or initialMode changes
+  useEffect(() => {
+    if (open) {
+      setMode(initialMode);
+      setStep(1);
+      setErrorMsg('');
+    }
+  }, [open, initialMode]);
 
   // Form State
   const [fullName, setFullName] = useState('');
