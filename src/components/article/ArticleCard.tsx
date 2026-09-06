@@ -52,7 +52,7 @@ export function ArticleCard({ post, featured = false }: ArticleCardProps) {
                     <VisibilityIcon fontSize="small" /> {post.views_count} {t.article.views}
                   </span>
                 </div>
-                <Link href={`/articles/${post.slug}`}>
+                <Link href={`/${locale}/articles/${post.slug}`}>
                   <Typography variant="h4" className="font-serif font-bold text-earth-900 hover:text-terracotta-600 transition-colors mb-3 line-clamp-2">
                     {title}
                   </Typography>
@@ -63,7 +63,7 @@ export function ArticleCard({ post, featured = false }: ArticleCardProps) {
               </div>
 
               <div className="flex items-center justify-between pt-4 border-t border-cream-200">
-                <Link href={`/articles/${post.slug}`}>
+                <Link href={`/${locale}/articles/${post.slug}`}>
                   <Button variant="contained" sx={{ bgcolor: '#C88A79', '&:hover': { bgcolor: '#A66E5E' } }}>
                     {t.home.readArticle}
                   </Button>
@@ -103,7 +103,7 @@ export function ArticleCard({ post, featured = false }: ArticleCardProps) {
                 <span>•</span>
                 <span>{post.views_count} views</span>
               </div>
-              <Link href={`/articles/${post.slug}`}>
+              <Link href={`/${locale}/articles/${post.slug}`}>
                 <Typography variant="h6" className="font-serif font-bold text-earth-900 hover:text-terracotta-600 transition-colors mb-2 line-clamp-2 leading-snug">
                   {title}
                 </Typography>
@@ -114,7 +114,7 @@ export function ArticleCard({ post, featured = false }: ArticleCardProps) {
             </div>
 
             <div className="flex items-center justify-between pt-3 border-t border-cream-200 mt-auto">
-              <Link href={`/articles/${post.slug}`}>
+              <Link href={`/${locale}/articles/${post.slug}`}>
                 <Typography variant="caption" className="font-sans font-bold text-terracotta-600 uppercase tracking-wider hover:underline">
                   {t.home.readArticle} →
                 </Typography>

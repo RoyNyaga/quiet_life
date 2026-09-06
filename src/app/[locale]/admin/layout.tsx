@@ -17,7 +17,7 @@ import { useApp } from '@/lib/store';
 export default function AdminLayout({ children }: { children: ReactNode }) {
   const pathname = usePathname();
   const router = useRouter();
-  const { user } = useApp();
+  const { user, locale } = useApp();
 
   // Protect Admin section
   if (!user || user.role !== 'admin') {
@@ -29,7 +29,7 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
         <Typography variant="body1" className="text-earth-600 mb-6 max-w-md">
           You must be logged in as an Administrator to access the Quiet Life Admin Portal.
         </Typography>
-        <Button variant="contained" onClick={() => router.push('/')} sx={{ bgcolor: '#C88A79', '&:hover': { bgcolor: '#A66E5E' } }}>
+        <Button variant="contained" onClick={() => router.push(`/${locale}`)} sx={{ bgcolor: '#C88A79', '&:hover': { bgcolor: '#A66E5E' } }}>
           Return to Quiet Life Home
         </Button>
       </Box>
@@ -37,12 +37,12 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
   }
 
   const adminMenu = [
-    { label: 'Dashboard', href: '/admin/dashboard', icon: <DashboardIcon /> },
-    { label: 'Posts Management', href: '/admin/posts', icon: <ArticleIcon /> },
-    { label: 'Categories', href: '/admin/categories', icon: <CategoryIcon /> },
-    { label: 'Tags', href: '/admin/tags', icon: <LocalOfferIcon /> },
-    { label: 'Users', href: '/admin/users', icon: <PeopleIcon /> },
-    { label: 'Subscribers', href: '/admin/subscribers', icon: <MarkEmailReadIcon /> },
+    { label: 'Dashboard', href: `/${locale}/admin/dashboard`, icon: <DashboardIcon /> },
+    { label: 'Posts Management', href: `/${locale}/admin/posts`, icon: <ArticleIcon /> },
+    { label: 'Categories', href: `/${locale}/admin/categories`, icon: <CategoryIcon /> },
+    { label: 'Tags', href: `/${locale}/admin/tags`, icon: <LocalOfferIcon /> },
+    { label: 'Users', href: `/${locale}/admin/users`, icon: <PeopleIcon /> },
+    { label: 'Subscribers', href: `/${locale}/admin/subscribers`, icon: <MarkEmailReadIcon /> },
   ];
 
   return (
@@ -50,7 +50,7 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
       {/* Sidebar */}
       <aside className="w-64 bg-white border-r border-cream-200 hidden md:flex flex-col justify-between p-4 sticky top-0 h-screen">
         <div className="space-y-6">
-          <Link href="/admin/dashboard" className="flex items-center gap-2 px-3 py-2 text-earth-900">
+          <Link href={`/${locale}/admin/dashboard`} className="flex items-center gap-2 px-3 py-2 text-earth-900">
             <div className="w-9 h-9 rounded-xl bg-sage-100 flex items-center justify-center text-sage-700">
               <SpaIcon />
             </div>
@@ -92,7 +92,7 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
         </div>
 
         <div className="pt-4 border-t border-cream-200 space-y-3">
-          <Link href="/">
+          <Link href={`/${locale}`}>
             <Button fullWidth size="small" startIcon={<ArrowBackIcon />} sx={{ color: '#5C4438' }}>
               Back to Public Site
             </Button>
@@ -100,9 +100,9 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
         </div>
       </aside>
 
-      {/* Main Admin Content Area */}
-      <main className="flex-1 overflow-y-auto p-6 md:p-10">
-        <div className="max-w-6xl mx-auto">{children}</div>
+      {/* Main Admin Content */}
+      <main className="flex-1 p-6 sm:p-10 max-w-6xl overflow-y-auto">
+        {children}
       </main>
     </div>
   );

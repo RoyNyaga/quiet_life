@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect } from 'react';
-import { useParams, notFound } from 'next/navigation';
+import { useParams } from 'next/navigation';
 import Link from 'next/link';
 import { Container, Typography, Chip, Avatar, Box, Alert } from '@mui/material';
 import AccessTimeIcon from '@mui/icons-material/AccessTime';
@@ -40,7 +40,7 @@ export default function ArticleShowPage() {
         <Typography variant="body1" className="text-earth-600">
           The mindful article you are looking for may have been moved or removed.
         </Typography>
-        <Link href="/articles" className="inline-block mt-4 text-terracotta-600 font-bold underline">
+        <Link href={`/${locale}/articles`} className="inline-block mt-4 text-terracotta-600 font-bold underline">
           ← Back to All Articles
         </Link>
       </Container>
@@ -62,7 +62,7 @@ export default function ArticleShowPage() {
     <article className="py-10">
       <Container maxWidth="md" className="px-4 space-y-8">
         {/* Navigation Back */}
-        <Link href="/articles" className="inline-flex items-center gap-2 text-earth-600 hover:text-terracotta-600 font-semibold text-sm transition-colors">
+        <Link href={`/${locale}/articles`} className="inline-flex items-center gap-2 text-earth-600 hover:text-terracotta-600 font-semibold text-sm transition-colors">
           <ArrowBackIcon fontSize="small" /> Back to Articles
         </Link>
 
@@ -125,7 +125,7 @@ export default function ArticleShowPage() {
         {/* Mindful Audio Narration Player */}
         <AudioPlayer textToRead={contentMarkdown} />
 
-        {/* Sticky Social Share Bar */}
+        {/* Sticky Social Share Bar with Language Prioritization */}
         <div className="sticky top-20 z-10 my-4 flex justify-end">
           <SocialShareBar post={post} />
         </div>

@@ -18,7 +18,6 @@ export default function HomePage() {
   const t = DICTIONARY[locale];
 
   const featuredPost = posts[0];
-  const trendingPosts = posts.slice(1);
 
   const getCategoryIcon = (iconName?: string | null) => {
     switch (iconName) {
@@ -69,7 +68,7 @@ export default function HomePage() {
             </motion.div>
 
             <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} transition={{ duration: 0.4, delay: 0.3 }} className="pt-2 flex justify-center gap-4">
-              <Link href="/articles">
+              <Link href={`/${locale}/articles`}>
                 <Button variant="contained" size="large" endIcon={<ArrowForwardIcon />} sx={{ bgcolor: '#C88A79', '&:hover': { bgcolor: '#A66E5E' }, px: 4, py: 1.5, borderRadius: 3 }}>
                   {t.home.browseCategories}
                 </Button>
@@ -88,7 +87,7 @@ export default function HomePage() {
         </div>
         <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-4">
           {categories.map((cat, idx) => (
-            <Link key={cat.id} href={`/articles?category=${cat.slug}`}>
+            <Link key={cat.id} href={`/${locale}/articles?category=${cat.slug}`}>
               <motion.div initial={{ opacity: 0, y: 15 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: idx * 0.05 }} whileHover={{ y: -6 }}>
                 <Box className="p-5 rounded-2xl bg-white border border-cream-200 text-center flex flex-col items-center gap-3 hover:border-terracotta-400 hover:shadow-md transition-all">
                   <div className="w-12 h-12 rounded-xl bg-sage-50 text-sage-600 flex items-center justify-center">
@@ -122,7 +121,7 @@ export default function HomePage() {
           <Typography variant="h4" className="font-serif font-bold text-earth-900">
             {t.home.latestArticles}
           </Typography>
-          <Link href="/articles">
+          <Link href={`/${locale}/articles`}>
             <Button endIcon={<ArrowForwardIcon />} sx={{ color: '#C88A79' }}>
               View All Articles
             </Button>
@@ -139,7 +138,7 @@ export default function HomePage() {
               Sign in as the administrator to start publishing mindful wisdom, reflections, and wellness stories.
             </Typography>
             <div className="pt-2">
-              <Link href="/admin/posts/new">
+              <Link href={`/${locale}/admin/posts/new`}>
                 <Button variant="contained" sx={{ bgcolor: '#C88A79', '&:hover': { bgcolor: '#A66E5E' }, borderRadius: 3 }}>
                   Create First Article
                 </Button>

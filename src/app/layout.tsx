@@ -1,8 +1,5 @@
 import type { Metadata } from 'next';
 import './globals.css';
-import { Providers } from '@/components/providers/Providers';
-import { Navbar } from '@/components/navigation/Navbar';
-import { Footer } from '@/components/navigation/Footer';
 
 export const metadata: Metadata = {
   title: 'Quiet Life — Wellness, Personal Development & Mindful Living',
@@ -21,11 +18,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         />
       </head>
       <body className="bg-[#FDFBF7] text-[#2C2420] antialiased min-h-screen flex flex-col font-sans" suppressHydrationWarning>
-        <Providers>
-          <Navbar />
-          <main className="flex-grow">{children}</main>
-          <Footer />
-        </Providers>
+        {children}
       </body>
     </html>
   );

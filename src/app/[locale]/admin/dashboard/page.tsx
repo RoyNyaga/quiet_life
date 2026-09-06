@@ -10,7 +10,7 @@ import AddIcon from '@mui/icons-material/Add';
 import { useApp } from '@/lib/store';
 
 export default function AdminDashboardPage() {
-  const { posts, subscriptions, categories } = useApp();
+  const { posts, subscriptions, categories, locale } = useApp();
 
   const totalViews = posts.reduce((sum, p) => sum + p.views_count, 0);
   const totalLikes = posts.reduce((sum, p) => sum + (p.likes_count || 0), 0);
@@ -34,7 +34,7 @@ export default function AdminDashboardPage() {
             Overview of Quiet Life publication metrics and content performance.
           </Typography>
         </div>
-        <Link href="/admin/posts/new">
+        <Link href={`/${locale}/admin/posts/new`}>
           <Button variant="contained" startIcon={<AddIcon />} sx={{ bgcolor: '#C88A79', '&:hover': { bgcolor: '#A66E5E' } }}>
             Create New Article
           </Button>
@@ -66,7 +66,7 @@ export default function AdminDashboardPage() {
           <Typography variant="h6" className="font-serif font-bold text-earth-900">
             Recent Articles
           </Typography>
-          <Link href="/admin/posts">
+          <Link href={`/${locale}/admin/posts`}>
             <Button size="small" sx={{ color: '#C88A79' }}>
               View All Posts
             </Button>

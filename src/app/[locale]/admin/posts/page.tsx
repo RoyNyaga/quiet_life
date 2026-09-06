@@ -12,7 +12,7 @@ import { MarkdownRenderer } from '@/components/article/MarkdownRenderer';
 import { Post } from '@/types/database';
 
 export default function AdminPostsPage() {
-  const { posts, categories, deletePost } = useApp();
+  const { posts, categories, deletePost, locale } = useApp();
   const [searchQuery, setSearchQuery] = useState('');
   const [previewPost, setPreviewPost] = useState<Post | null>(null);
 
@@ -29,7 +29,7 @@ export default function AdminPostsPage() {
             Create, edit, preview draft, and publish mindful articles.
           </Typography>
         </div>
-        <Link href="/admin/posts/new">
+        <Link href={`/${locale}/admin/posts/new`}>
           <Button variant="contained" startIcon={<AddIcon />} sx={{ bgcolor: '#C88A79', '&:hover': { bgcolor: '#A66E5E' } }}>
             Create Article
           </Button>
@@ -80,7 +80,7 @@ export default function AdminPostsPage() {
                       <IconButton onClick={() => setPreviewPost(post)} size="small">
                         <VisibilityIcon />
                       </IconButton>
-                      <IconButton component={Link} href={`/admin/posts/new?edit=${post.id}`} size="small">
+                      <IconButton component={Link} href={`/${locale}/admin/posts/new?edit=${post.id}`} size="small">
                         <EditIcon />
                       </IconButton>
                       <IconButton onClick={() => deletePost(post.id)} size="small" color="error">

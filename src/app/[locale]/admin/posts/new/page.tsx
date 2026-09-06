@@ -13,7 +13,7 @@ function PostEditorContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const editId = searchParams.get('edit');
-  const { posts, categories, createPost, updatePost } = useApp();
+  const { posts, categories, createPost, updatePost, locale } = useApp();
 
   const [activeLangTab, setActiveLangTab] = useState<0 | 1>(0);
 
@@ -98,7 +98,7 @@ function PostEditorContent() {
       });
     }
 
-    router.push('/admin/posts');
+    router.push(`/${locale}/admin/posts`);
   };
 
   return (
@@ -114,65 +114,55 @@ function PostEditorContent() {
         </div>
 
         <div className="flex items-center gap-3">
-          <Button variant="outlined" startIcon={<VisibilityIcon />} onClick={() => setPreviewOpen(true)}>
-            Draft Preview
+          <Button variant="outlined" startIcon={<VisibilityIcon />} onClick={() => setPreviewOpen(true)} sx={{ color: '#5C4438', borderColor: '#E8E2DA' }}>
+            Preview Draft
           </Button>
           <Button variant="contained" startIcon={<SaveIcon />} onClick={handleSave} sx={{ bgcolor: '#C88A79', '&:hover': { bgcolor: '#A66E5E' } }}>
-            {status === 'published' ? 'Publish' : 'Save Draft'}
+            Save & Publish
           </Button>
         </div>
       </div>
 
       <form onSubmit={handleSave} className="space-y-6">
-        {/* Settings Box */}
-        <Box className="p-6 rounded-3xl bg-white border border-cream-200 shadow-sm grid grid-cols-1 md:grid-cols-3 gap-4">
-          <FormControl fullWidth size="small">
-            <InputLabel>Category</InputLabel>
-            <Select value={categoryId} label="Category" onChange={e => setCategoryId(e.target.value)}>
-              {categories.map(cat => (
-                <MenuItem key={cat.id} value={cat.id}>
-                  {cat.name_en}
-                </MenuItem>
-              ))}
-            </Select>
-          </FormControl>
-
-          <FormControl fullWidth size="small">
-            <InputLabel>Publishing Status</InputLabel>
-            <Select value={status} label="Publishing Status" onChange={e => setStatus(e.target.value as PostStatus)}>
-              <MenuItem value="draft">Draft</MenuItem>
-              <MenuItem value="published">Published</MenuItem>
-              <MenuItem value="archived">Archived</MenuItem>
-            </Select>
-          </FormControl>
-
-          <TextField fullWidth size="small" type="number" label="Read Time (Minutes)" value={readTime} onChange={e => setReadTime(Number(e.target.value))} />
-        </Box>
-
-        {/* Cover Image & Slug */}
+        {/* Core Metadata Grid */}
         <Box className="p-6 rounded-3xl bg-white border border-cream-200 shadow-sm space-y-4">
-          <Typography variant="subtitle1" className="font-serif font-bold text-earth-900">
-            Article Media & URL Slug
-          </Typography>
-
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <TextField fullWidth size="small" label="Cover Image URL" value={coverImageUrl} onChange={e => setCoverImageUrl(e.target.value)} />
-            <TextField fullWidth size="small" label="Readable URL Slug" value={slug} onChange={e => setSlug(e.target.value)} />
+            <FormControl fullWidth size="small">
+              <InputLabel>Category</InputLabel>
+              <Select value={categoryId} label="Category" onChange={e => setCategoryId(e.target.value)}>
+                {categories.map(cat => (
+                  <MenuItem key={cat.id} value={cat.id}>
+                    {cat.name_en}
+                  </MenuItem>
+                ))}
+              </Select>
+            </FormControl>
+
+            <FormControl fullWidth size="small">
+              <InputLabel>Publish Status</InputLabel>
+              <Select value={status} label="Publish Status" onChange={e => setStatus(e.target.value as PostStatus)}>
+                <MenuItem value="published">Published</MenuItem>
+                <MenuItem value="draft">Draft (Unlisted)</MenuItem>
+                <MenuItem value="archived">Archived</MenuItem>
+              </Select>
+            </FormControl>
           </div>
 
-          {coverImageUrl && (
-            <div className="h-40 w-full rounded-2xl overflow-hidden">
-              <img src={coverImageUrl} alt="Cover Preview" className="w-full h-full object-cover" />
-            </div>
-          )}
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <TextField fullWidth size="small" label="Custom URL Slug" value={slug} onChange={e => setSlug(e.target.value)} helperText="e.g. slowing-down-daily" />
+            <TextField fullWidth size="small" type="number" label="Read Time (Minutes)" value={readTime} onChange={e => setReadTime(Number(e.target.value))} />
+            <TextField fullWidth size="small" label="Cover Image URL" value={coverImageUrl} onChange={e => setCoverImageUrl(e.target.value)} />
+          </div>
         </Box>
 
-        {/* Language Tabs & Content */}
+        {/* Localized Content Section */}
         <Box className="p-6 rounded-3xl bg-white border border-cream-200 shadow-sm space-y-4">
-          <Tabs value={activeLangTab} onChange={(_, val) => setActiveLangTab(val)} indicatorColor="primary" textColor="primary">
-            <Tab label="English (Default)" />
-            <Tab label="French (Français)" />
-          </Tabs>
+          <div className="border-b border-cream-200">
+            <Tabs value={activeLangTab} onChange={(_, val) => setActiveLangTab(val)} textColor="primary" indicatorColor="primary">
+              <Tab label="English (Default)" />
+              <Tab label="French Translation (Optional)" />
+            </Tabs>
+          </div>
 
           {activeLangTab === 0 ? (
             <div className="space-y-4 pt-2">

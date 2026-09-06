@@ -1,11 +1,10 @@
 'use client';
 
 import { useState } from 'react';
-import { Container, Typography, TextField, Button, Avatar, Box, Tabs, Tab, Snackbar, Alert, Card } from '@mui/material';
+import { Container, Typography, TextField, Button, Avatar, Box, Tabs, Tab, Snackbar, Alert } from '@mui/material';
 import BookmarkIcon from '@mui/icons-material/Bookmark';
 import PersonIcon from '@mui/icons-material/Person';
 import LockIcon from '@mui/icons-material/Lock';
-import DeleteIcon from '@mui/icons-material/Delete';
 import { useApp } from '@/lib/store';
 import { DICTIONARY } from '@/lib/i18n';
 import { ArticleCard } from '@/components/article/ArticleCard';

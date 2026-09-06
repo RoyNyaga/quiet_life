@@ -36,9 +36,9 @@ export function Navbar() {
   };
 
   const navLinks = [
-    { label: t.nav.home, href: '/' },
-    { label: t.nav.articles, href: '/articles' },
-    { label: t.nav.contact, href: '/contact' },
+    { label: t.nav.home, href: `/${locale}` },
+    { label: t.nav.articles, href: `/${locale}/articles` },
+    { label: t.nav.contact, href: `/${locale}/contact` },
   ];
 
   return (
@@ -46,7 +46,7 @@ export function Navbar() {
       <AppBar position="sticky" elevation={0} sx={{ bgcolor: '#FDFBF7', borderBottom: '1px solid #E8E2DA' }}>
         <Toolbar className="max-w-7xl mx-auto w-full flex items-center justify-between px-4 py-1">
           {/* Logo */}
-          <Link href="/" className="flex items-center gap-2 text-earth-900 group">
+          <Link href={`/${locale}`} className="flex items-center gap-2 text-earth-900 group">
             <div className="w-10 h-10 rounded-xl bg-terracotta-100 flex items-center justify-center text-terracotta-600 transition-transform group-hover:scale-105">
               <SpaIcon fontSize="medium" />
             </div>
@@ -79,7 +79,7 @@ export function Navbar() {
 
             {/* Admin Dashboard Badge Link (If Admin User) */}
             {user && user.role === 'admin' && (
-              <Link href="/admin/dashboard">
+              <Link href={`/${locale}/admin/dashboard`}>
                 <Button
                   size="small"
                   startIcon={<AdminPanelSettingsIcon />}
@@ -148,11 +148,11 @@ export function Navbar() {
                   <MenuItem disabled className="opacity-100 font-bold text-earth-900 border-b border-cream-200">
                     {user.full_name}
                   </MenuItem>
-                  <MenuItem onClick={() => setAnchorEl(null)} component={Link} href="/profile">
+                  <MenuItem onClick={() => setAnchorEl(null)} component={Link} href={`/${locale}/profile`}>
                     {t.nav.profile}
                   </MenuItem>
                   {user.role === 'admin' && (
-                    <MenuItem onClick={() => setAnchorEl(null)} component={Link} href="/admin/dashboard" className="text-sage-700 font-semibold">
+                    <MenuItem onClick={() => setAnchorEl(null)} component={Link} href={`/${locale}/admin/dashboard`} className="text-sage-700 font-semibold">
                       {t.nav.adminDashboard}
                     </MenuItem>
                   )}
@@ -211,7 +211,7 @@ export function Navbar() {
           ))}
           {user && user.role === 'admin' && (
             <ListItem disablePadding>
-              <ListItemButton onClick={() => setMobileMenuOpen(false)} component={Link} href="/admin/dashboard">
+              <ListItemButton onClick={() => setMobileMenuOpen(false)} component={Link} href={`/${locale}/admin/dashboard`}>
                 <ListItemText primary={t.nav.adminDashboard} slotProps={{ primary: { className: 'font-serif font-bold text-sage-700' } }} />
               </ListItemButton>
             </ListItem>

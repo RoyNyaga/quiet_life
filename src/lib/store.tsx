@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect, createContext, useContext, ReactNode } from 'react';
+import { useRouter, usePathname } from 'next/navigation';
 import { Post, Category, Tag, Comment, Profile, ReadingList, ReadingListItem, Subscription, Locale } from '@/types/database';
 import { INITIAL_CATEGORIES, INITIAL_TAGS, MOCK_ADMIN_PROFILE } from './mockData';
 import { createClient } from './supabase/client';
@@ -40,8 +41,10 @@ interface AppContextType {
 
 const AppContext = createContext<AppContextType | undefined>(undefined);
 
-export function AppProvider({ children }: { children: ReactNode }) {
-  const [locale, setLocaleState] = useState<Locale>('en');
+export function AppProvider({ children, initialLocale = 'en' }: { children: ReactNode; initialLocale?: Locale }) {
+  const router = useRouter();
+  const pathname = usePathname();
+  const [locale, setLocaleState] = useState<Locale>(initialLocale);
   const [user, setUser] = useState<Profile | null>(null);
   const [posts, setPosts] = useState<Post[]>([]);
   const [categories, setCategories] = useState<Category[]>(INITIAL_CATEGORIES);
@@ -178,9 +181,25 @@ export function AppProvider({ children }: { children: ReactNode }) {
     }
   }, []);
 
-  const setLocale = (l: Locale) => {
-    setLocaleState(l);
-    localStorage.setItem('quiet_life_locale', l);
+  const setLocale = (newLocale: Locale) => {
+    setLocaleState(newLocale);
+    localStorage.setItem('quiet_life_locale', newLocale);
+    if (typeof document !== 'undefined') {
+      document.cookie = `quiet_life_locale=${newLocale}; path=/; max-age=31536000; SameSite=Lax`;
+    }
+
+    if (pathname) {
+      const segments = pathname.split('/');
+      // segments[1] is the locale code ('en' | 'fr')
+      if (segments[1] === 'en' || segments[1] === 'fr') {
+        segments[1] = newLocale;
+        const newPath = segments.join('/') || `/${newLocale}`;
+        const search = typeof window !== 'undefined' ? window.location.search : '';
+        router.push(`${newPath}${search}`);
+      } else {
+        router.push(`/${newLocale}${pathname}`);
+      }
+    }
   };
 
   const signOut = async () => {
