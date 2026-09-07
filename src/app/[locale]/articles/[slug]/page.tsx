@@ -11,7 +11,6 @@ import ArrowBackIcon from '@mui/icons-material/ArrowBack';
 import { useApp } from '@/lib/store';
 import { getLocalizedField, DICTIONARY } from '@/lib/i18n';
 import { MarkdownRenderer } from '@/components/article/MarkdownRenderer';
-import { AudioPlayer } from '@/components/article/AudioPlayer';
 import { SocialShareBar } from '@/components/article/SocialShareBar';
 import { CommentSection } from '@/components/article/CommentSection';
 import { ArticleCard } from '@/components/article/ArticleCard';
@@ -121,9 +120,6 @@ export default function ArticleShowPage() {
             <img src={post.cover_image_url} alt={title} className="w-full h-full object-cover" />
           </div>
         )}
-
-        {/* Mindful Audio Narration Player */}
-        <AudioPlayer textToRead={contentMarkdown} />
 
         {/* Sticky Social Share Bar with Language Prioritization */}
         <div className="sticky top-20 z-10 my-4 flex justify-end">

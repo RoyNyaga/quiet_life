@@ -8,6 +8,7 @@ import LockIcon from '@mui/icons-material/Lock';
 import { useApp } from '@/lib/store';
 import { DICTIONARY } from '@/lib/i18n';
 import { ArticleCard } from '@/components/article/ArticleCard';
+import { ImageUploader } from '@/components/admin/ImageUploader';
 
 export default function ProfilePage() {
   const { user, updateUserProfile, locale, readingLists, readingListItems, posts } = useApp();
@@ -122,9 +123,16 @@ export default function ProfilePage() {
           <Typography variant="h5" className="font-serif font-bold text-earth-900">
             Profile Settings
           </Typography>
-          <form onSubmit={handleUpdateProfile} className="space-y-4">
+          <form onSubmit={handleUpdateProfile} className="space-y-5">
             <TextField fullWidth label="Full Name" value={fullName} onChange={e => setFullName(e.target.value)} required />
-            <TextField fullWidth label="Avatar Image URL" value={avatarUrl} onChange={e => setAvatarUrl(e.target.value)} helperText="Enter a direct image link or leave existing" />
+            <ImageUploader
+              label="Profile Picture / Avatar"
+              value={avatarUrl}
+              onChange={url => setAvatarUrl(url)}
+              aspectRatio="1:1"
+              folder="avatars"
+              helperText="Upload and crop your profile avatar. Saved into the avatars bucket."
+            />
             <Button fullWidth variant="contained" type="submit" size="large" sx={{ bgcolor: '#C88A79', '&:hover': { bgcolor: '#A66E5E' }, py: 1.5 }}>
               Save Profile Changes
             </Button>

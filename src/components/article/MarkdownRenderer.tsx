@@ -30,7 +30,7 @@ export function MarkdownRenderer({ content }: MarkdownRendererProps) {
             </Typography>
           ),
           p: ({ children }) => (
-            <Typography variant="body1" className="text-earth-700 leading-relaxed mb-4">
+            <Typography component="div" variant="body1" className="text-earth-700 leading-relaxed mb-4">
               {children}
             </Typography>
           ),
@@ -38,6 +38,47 @@ export function MarkdownRenderer({ content }: MarkdownRendererProps) {
             <div className="my-6 p-4 border-l-4 border-terracotta-400 bg-amber-50/50 rounded-r-xl font-serif italic text-earth-800 text-lg">
               {children}
             </div>
+          ),
+          img: ({ src, alt }) => (
+            <figure className="my-8">
+              <img
+                src={src || ''}
+                alt={alt || ''}
+                className="w-full max-h-[550px] object-cover rounded-2xl shadow-md border border-cream-200"
+              />
+              {alt && (
+                <figcaption className="text-center text-xs text-earth-500 mt-2 italic">
+                  {alt}
+                </figcaption>
+              )}
+            </figure>
+          ),
+          a: ({ href, children }) => (
+            <a
+              href={href}
+              target={href?.startsWith('http') ? '_blank' : undefined}
+              rel={href?.startsWith('http') ? 'noopener noreferrer' : undefined}
+              className="text-terracotta-600 hover:text-terracotta-700 underline font-medium transition-colors"
+            >
+              {children}
+            </a>
+          ),
+          table: ({ children }) => (
+            <div className="my-6 overflow-x-auto rounded-2xl border border-cream-200 bg-white shadow-xs">
+              <table className="w-full text-left border-collapse text-sm text-earth-800">
+                {children}
+              </table>
+            </div>
+          ),
+          th: ({ children }) => (
+            <th className="bg-cream-100/80 p-3 font-bold border-b border-cream-200 text-earth-900">
+              {children}
+            </th>
+          ),
+          td: ({ children }) => (
+            <td className="p-3 border-b border-cream-100">
+              {children}
+            </td>
           ),
         }}
       >
