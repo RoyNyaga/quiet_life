@@ -2,12 +2,14 @@
 
 import { useState, useEffect } from 'react';
 import { Typography, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, Chip, Avatar, Box } from '@mui/material';
+import { DICTIONARY } from '@/lib/i18n';
 import { useApp } from '@/lib/store';
 import { createClient } from '@/lib/supabase/client';
 import { Profile } from '@/types/database';
 
 export default function AdminUsersPage() {
-  const { user } = useApp();
+  const { user, locale } = useApp();
+  const t = DICTIONARY[locale]?.admin || DICTIONARY.en.admin;
   const [profiles, setProfiles] = useState<Profile[]>([]);
 
   useEffect(() => {
@@ -45,11 +47,11 @@ export default function AdminUsersPage() {
   return (
     <div className="space-y-6">
       <div>
-        <Typography variant="h4" className="font-serif font-bold text-earth-900">
-          Users Management
+        <Typography variant="h4" className="font-serif font-bold text-earth-900 text-xl sm:text-2xl md:text-3xl leading-snug">
+          {t.users}
         </Typography>
         <Typography variant="body2" className="text-earth-600">
-          View registered profiles and manage administrator privileges.
+          {t.usersDesc}
         </Typography>
       </div>
 
@@ -58,10 +60,10 @@ export default function AdminUsersPage() {
           <Table>
             <TableHead>
               <TableRow>
-                <TableCell className="font-bold">User</TableCell>
-                <TableCell className="font-bold">Role</TableCell>
-                <TableCell className="font-bold">Onboarding</TableCell>
-                <TableCell className="font-bold">Joined Date</TableCell>
+                <TableCell className="font-bold">{t.user}</TableCell>
+                <TableCell className="font-bold">{t.role}</TableCell>
+                <TableCell className="font-bold">{t.onboarding}</TableCell>
+                <TableCell className="font-bold">{t.joinedDate}</TableCell>
               </TableRow>
             </TableHead>
             <TableBody>
@@ -84,7 +86,7 @@ export default function AdminUsersPage() {
                   </TableCell>
                   <TableCell>
                     <Chip
-                      label={usr.role}
+                      label={usr.role === 'admin' ? t.adminRole : t.userRole}
                       size="small"
                       sx={{
                         bgcolor: usr.role === 'admin' ? 'rgba(200,138,121,0.15)' : 'rgba(116,157,129,0.15)',
@@ -95,7 +97,7 @@ export default function AdminUsersPage() {
                   </TableCell>
                   <TableCell>
                     <Chip
-                      label={usr.onboarding_completed ? 'Completed' : 'Pending'}
+                      label={usr.onboarding_completed ? t.completed : t.pending}
                       size="small"
                       color={usr.onboarding_completed ? 'success' : 'default'}
                     />

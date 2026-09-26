@@ -5,11 +5,14 @@ import { Typography, Button, TextField, Table, TableBody, TableCell, TableContai
 import AddIcon from '@mui/icons-material/Add';
 import EditIcon from '@mui/icons-material/Edit';
 import DeleteIcon from '@mui/icons-material/Delete';
+import { DICTIONARY } from '@/lib/i18n';
 import { useApp } from '@/lib/store';
 import { Category } from '@/types/database';
 
 export default function AdminCategoriesPage() {
-  const { categories, createCategory, updateCategory, deleteCategory } = useApp();
+  const { categories, createCategory, updateCategory, deleteCategory, locale } = useApp();
+  const t = DICTIONARY[locale]?.admin || DICTIONARY.en.admin;
+
   const [modalOpen, setModalOpen] = useState(false);
   const [editCat, setEditCat] = useState<Category | null>(null);
 
@@ -51,15 +54,15 @@ export default function AdminCategoriesPage() {
     <div className="space-y-6">
       <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
         <div>
-          <Typography variant="h4" className="font-serif font-bold text-earth-900">
-            Categories Management
+          <Typography variant="h4" className="font-serif font-bold text-earth-900 text-xl sm:text-2xl md:text-3xl leading-snug">
+            {t.categories}
           </Typography>
           <Typography variant="body2" className="text-earth-600">
-            Create, update, and organize publication categories.
+            {t.categoriesDesc}
           </Typography>
         </div>
         <Button variant="contained" startIcon={<AddIcon />} onClick={handleOpenCreate} sx={{ bgcolor: '#C88A79', '&:hover': { bgcolor: '#A66E5E' } }}>
-          Add Category
+          {t.addCategory}
         </Button>
       </div>
 
@@ -68,10 +71,10 @@ export default function AdminCategoriesPage() {
           <Table>
             <TableHead>
               <TableRow>
-                <TableCell className="font-bold">Name (English)</TableCell>
-                <TableCell className="font-bold">Name (French)</TableCell>
-                <TableCell className="font-bold">Slug</TableCell>
-                <TableCell className="font-bold text-right">Actions</TableCell>
+                <TableCell className="font-bold">{t.categoryNameEn}</TableCell>
+                <TableCell className="font-bold">{t.categoryNameFr}</TableCell>
+                <TableCell className="font-bold">{t.slug}</TableCell>
+                <TableCell className="font-bold text-right">{t.actions}</TableCell>
               </TableRow>
             </TableHead>
             <TableBody>
@@ -98,16 +101,16 @@ export default function AdminCategoriesPage() {
       {/* Modal Dialog */}
       <Dialog open={modalOpen} onClose={() => setModalOpen(false)} maxWidth="xs" fullWidth slotProps={{ paper: { sx: { borderRadius: 4, p: 2 } } }}>
         <form onSubmit={handleSave}>
-          <DialogTitle className="font-serif font-bold text-earth-900">{editCat ? 'Edit Category' : 'Create Category'}</DialogTitle>
+          <DialogTitle className="font-serif font-bold text-earth-900">{editCat ? t.editCategory : t.addCategory}</DialogTitle>
           <DialogContent className="space-y-4 pt-2">
-            <TextField fullWidth label="Name (English)" value={nameEn} onChange={e => setNameEn(e.target.value)} required />
-            <TextField fullWidth label="Name (French)" value={nameFr} onChange={e => setNameFr(e.target.value)} required />
-            <TextField fullWidth label="URL Slug" value={slug} onChange={e => setSlug(e.target.value)} />
+            <TextField fullWidth label={t.categoryNameEn} value={nameEn} onChange={e => setNameEn(e.target.value)} required />
+            <TextField fullWidth label={t.categoryNameFr} value={nameFr} onChange={e => setNameFr(e.target.value)} required />
+            <TextField fullWidth label={t.slug} value={slug} onChange={e => setSlug(e.target.value)} />
           </DialogContent>
           <DialogActions className="p-4">
-            <Button onClick={() => setModalOpen(false)}>Cancel</Button>
+            <Button onClick={() => setModalOpen(false)}>{t.cancel}</Button>
             <Button type="submit" variant="contained" sx={{ bgcolor: '#C88A79', '&:hover': { bgcolor: '#A66E5E' } }}>
-              Save
+              {t.save}
             </Button>
           </DialogActions>
         </form>

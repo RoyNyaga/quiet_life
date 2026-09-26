@@ -195,8 +195,16 @@ export function AppProvider({ children, initialLocale = 'en' }: { children: Reac
         .order('created_at', { ascending: false })
         .then(({ data: remotePosts }) => {
           if (remotePosts) {
-            setPosts(remotePosts);
-            localStorage.setItem('quiet_life_posts', JSON.stringify(remotePosts));
+            // Merge: keep any local-only posts (temp IDs starting with 'post-') that
+            // haven't been persisted to the DB yet, then prepend remote posts.
+            setPosts(prev => {
+              const localOnly = prev.filter(
+                p => p.id.startsWith('post-') && !remotePosts.some(r => r.id === p.id)
+              );
+              const merged = [...localOnly, ...remotePosts];
+              localStorage.setItem('quiet_life_posts', JSON.stringify(merged));
+              return merged;
+            });
           }
         });
 
@@ -240,6 +248,7 @@ export function AppProvider({ children, initialLocale = 'en' }: { children: Reac
     const newPost: Post = {
       id: newPostData.id || `post-${Date.now()}`,
       slug: newPostData.slug || `article-${Date.now()}`,
+      slug_source_locale: newPostData.slug_source_locale || 'en',
       status: newPostData.status || 'published',
       category_id: newPostData.category_id || categories[0]?.id,
       author_id: user?.id || MOCK_ADMIN_PROFILE.id,
@@ -268,6 +277,7 @@ export function AppProvider({ children, initialLocale = 'en' }: { children: Reac
     if (supabase && user) {
       supabase.from('posts').insert({
         slug: newPost.slug,
+        slug_source_locale: newPost.slug_source_locale,
         category_id: newPost.category_id,
         author_id: user.id,
         status: newPost.status,
@@ -280,8 +290,20 @@ export function AppProvider({ children, initialLocale = 'en' }: { children: Reac
         content_markdown_en: newPost.content_markdown_en,
         content_markdown_fr: newPost.content_markdown_fr,
         published_at: newPost.published_at,
-      }).then(({ error }) => {
-        if (error) console.warn('Supabase post insert info:', error.message);
+      }).select('id').single().then(({ data, error }) => {
+        if (error) {
+          console.warn('Supabase post insert info:', error.message);
+        } else if (data?.id) {
+          // Replace the temp local ID with the real DB UUID so future fetches
+          // don't create a duplicate.
+          setPosts(prev => {
+            const updated = prev.map(p =>
+              p.id === newPost.id ? { ...p, id: data.id } : p
+            );
+            localStorage.setItem('quiet_life_posts', JSON.stringify(updated));
+            return updated;
+          });
+        }
       });
     }
   };

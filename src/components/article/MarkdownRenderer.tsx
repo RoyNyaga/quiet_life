@@ -48,11 +48,19 @@ export function MarkdownRenderer({ content }: MarkdownRendererProps) {
               {children}
             </h4>
           ),
-          p: ({ children }) => (
-            <p className="text-[#362E27] text-[1.125rem] leading-[1.9] mb-7 font-normal">
-              {children}
-            </p>
-          ),
+          p: ({ node, children }: any) => {
+            const hasImage = node?.children?.some(
+              (child: any) => child.type === 'element' && child.tagName === 'img'
+            );
+            if (hasImage) {
+              return <div className="mb-7 font-normal">{children}</div>;
+            }
+            return (
+              <p className="text-[#362E27] text-[1.125rem] leading-[1.9] mb-7 font-normal">
+                {children}
+              </p>
+            );
+          },
           blockquote: ({ children }) => (
             <div className="relative my-8 p-6 sm:p-7 rounded-2xl bg-[#F8F5F0] border-l-4 border-[#C88A79] shadow-xs">
               <div className="absolute top-4 right-4 text-[#D9B5AA] opacity-50 select-none">

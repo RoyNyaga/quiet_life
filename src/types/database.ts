@@ -35,6 +35,7 @@ export interface Tag {
 export interface Post {
   id: string;
   slug: string;
+  slug_source_locale?: Locale | null;
   category_id?: string | null;
   author_id?: string | null;
   status: PostStatus;

@@ -54,11 +54,11 @@ export const INITIAL_CATEGORIES: Category[] = [
 ];
 
 export const INITIAL_TAGS: Tag[] = [
-  { id: 't1111111-1111-1111-1111-111111111111', slug: 'morning-routine', name_en: 'Morning Rituals', name_fr: 'Rituels du Matin', created_at: new Date().toISOString() },
-  { id: 't2222222-2222-2222-2222-222222222222', slug: 'inner-peace', name_en: 'Inner Peace', name_fr: 'Paix Intérieure', created_at: new Date().toISOString() },
-  { id: 't3333333-3333-3333-3333-333333333333', slug: 'habit-building', name_en: 'Habits', name_fr: 'Habitudes', created_at: new Date().toISOString() },
-  { id: 't4444444-4444-4444-4444-444444444444', slug: 'stress-relief', name_en: 'Stress Relief', name_fr: 'Gestion du Stress', created_at: new Date().toISOString() },
-  { id: 't5555555-5555-5555-5555-555555555555', slug: 'mindful-eating', name_en: 'Nutrition', name_fr: 'Alimentation Consciente', created_at: new Date().toISOString() },
+  { id: 'b1111111-1111-1111-1111-111111111111', slug: 'morning-routine', name_en: 'Morning Rituals', name_fr: 'Rituels du Matin', created_at: new Date().toISOString() },
+  { id: 'b2222222-2222-2222-2222-222222222222', slug: 'inner-peace', name_en: 'Inner Peace', name_fr: 'Paix Intérieure', created_at: new Date().toISOString() },
+  { id: 'b3333333-3333-3333-3333-333333333333', slug: 'habit-building', name_en: 'Habits', name_fr: 'Habitudes', created_at: new Date().toISOString() },
+  { id: 'b4444444-4444-4444-4444-444444444444', slug: 'stress-relief', name_en: 'Stress Relief', name_fr: 'Gestion du Stress', created_at: new Date().toISOString() },
+  { id: 'b5555555-5555-5555-5555-555555555555', slug: 'mindful-eating', name_en: 'Nutrition', name_fr: 'Alimentation Consciente', created_at: new Date().toISOString() },
 ];
 
 export const MOCK_ADMIN_PROFILE: Profile = {

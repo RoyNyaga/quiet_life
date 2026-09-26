@@ -7,31 +7,42 @@ import AddIcon from '@mui/icons-material/Add';
 import EditIcon from '@mui/icons-material/Edit';
 import DeleteIcon from '@mui/icons-material/Delete';
 import VisibilityIcon from '@mui/icons-material/Visibility';
+import { DICTIONARY, getLocalizedField } from '@/lib/i18n';
 import { useApp } from '@/lib/store';
 import { MarkdownRenderer } from '@/components/article/MarkdownRenderer';
 import { Post } from '@/types/database';
 
 export default function AdminPostsPage() {
   const { posts, categories, deletePost, locale } = useApp();
+  const t = DICTIONARY[locale]?.admin || DICTIONARY.en.admin;
   const [searchQuery, setSearchQuery] = useState('');
   const [previewPost, setPreviewPost] = useState<Post | null>(null);
 
-  const filteredPosts = posts.filter(p => p.title_en.toLowerCase().includes(searchQuery.toLowerCase()));
+  const filteredPosts = posts.filter(p => {
+    // Search across both locales so a post isn't hidden just because its
+    // title in the current locale is empty (e.g. created on /fr with no EN title).
+    const titleLocale = getLocalizedField(p, 'title', locale).toLowerCase();
+    const titleEn = (p.title_en || '').toLowerCase();
+    const titleFr = (p.title_fr || '').toLowerCase();
+    const searchable = titleLocale || titleEn || titleFr;
+    const q = searchQuery.toLowerCase();
+    return q === '' || searchable.includes(q) || titleEn.includes(q) || titleFr.includes(q);
+  });
 
   return (
     <div className="space-y-6">
       <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
         <div>
-          <Typography variant="h4" className="font-serif font-bold text-earth-900">
-            Posts Management
+          <Typography variant="h4" className="font-serif font-bold text-earth-900 text-xl sm:text-2xl md:text-3xl leading-snug">
+            {t.posts}
           </Typography>
           <Typography variant="body2" className="text-earth-600">
-            Create, edit, preview draft, and publish mindful articles.
+            {t.postsDesc}
           </Typography>
         </div>
         <Link href={`/${locale}/admin/posts/new`}>
           <Button variant="contained" startIcon={<AddIcon />} sx={{ bgcolor: '#C88A79', '&:hover': { bgcolor: '#A66E5E' } }}>
-            Create Article
+            {t.createPost}
           </Button>
         </Link>
       </div>
@@ -39,7 +50,7 @@ export default function AdminPostsPage() {
       <Box className="p-6 rounded-3xl bg-white border border-cream-200 shadow-sm space-y-4">
         <TextField
           size="small"
-          placeholder="Filter posts by title..."
+          placeholder={t.filterPosts}
           value={searchQuery}
           onChange={e => setSearchQuery(e.target.value)}
           className="w-full sm:w-80"
@@ -49,25 +60,28 @@ export default function AdminPostsPage() {
           <Table>
             <TableHead>
               <TableRow>
-                <TableCell className="font-bold">Article Title</TableCell>
-                <TableCell className="font-bold">Category</TableCell>
-                <TableCell className="font-bold">Status</TableCell>
-                <TableCell className="font-bold">Translations</TableCell>
-                <TableCell className="font-bold">Views</TableCell>
-                <TableCell className="font-bold text-right">Actions</TableCell>
+                <TableCell className="font-bold">{t.articleTitle}</TableCell>
+                <TableCell className="font-bold">{t.category}</TableCell>
+                <TableCell className="font-bold">{t.status}</TableCell>
+                <TableCell className="font-bold">{t.translations}</TableCell>
+                <TableCell className="font-bold">{t.views}</TableCell>
+                <TableCell className="font-bold text-right">{t.actions}</TableCell>
               </TableRow>
             </TableHead>
             <TableBody>
               {filteredPosts.map(post => {
                 const cat = categories.find(c => c.id === post.category_id);
                 const hasFr = Boolean(post.title_fr && post.content_markdown_fr);
+                const titleDisplay = getLocalizedField(post, 'title', locale);
+                const catDisplay = cat ? getLocalizedField(cat, 'name', locale) : 'Wellness';
+                const statusLabel = post.status === 'published' ? t.published : post.status === 'draft' ? t.draft : t.archived;
 
                 return (
                   <TableRow key={post.id} hover>
-                    <TableCell className="font-serif font-semibold text-earth-900">{post.title_en}</TableCell>
-                    <TableCell>{cat?.name_en || 'Wellness'}</TableCell>
+                    <TableCell className="font-serif font-semibold text-earth-900">{titleDisplay}</TableCell>
+                    <TableCell>{catDisplay}</TableCell>
                     <TableCell>
-                      <Chip label={post.status} size="small" color={post.status === 'published' ? 'success' : 'warning'} />
+                      <Chip label={statusLabel} size="small" color={post.status === 'published' ? 'success' : 'warning'} />
                     </TableCell>
                     <TableCell>
                       <div className="flex gap-1">
