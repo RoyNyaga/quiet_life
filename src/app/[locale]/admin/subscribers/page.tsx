@@ -3,10 +3,13 @@
 import { useState } from 'react';
 import { Typography, Button, TextField, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, Chip, Box, Snackbar, Alert } from '@mui/material';
 import DownloadIcon from '@mui/icons-material/Download';
+import { DICTIONARY } from '@/lib/i18n';
 import { useApp } from '@/lib/store';
 
 export default function AdminSubscribersPage() {
-  const { subscriptions, posts } = useApp();
+  const { subscriptions, posts, locale } = useApp();
+  const t = DICTIONARY[locale]?.admin || DICTIONARY.en.admin;
+
   const [searchQuery, setSearchQuery] = useState('');
   const [toastMsg, setToastMsg] = useState('');
 
@@ -21,29 +24,29 @@ export default function AdminSubscribersPage() {
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
-    setToastMsg('Exported subscriber CSV file!');
+    setToastMsg(t.exportCSV);
   };
 
   return (
     <div className="space-y-6">
       <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
         <div>
-          <Typography variant="h4" className="font-serif font-bold text-earth-900">
-            Newsletter Subscribers
+          <Typography variant="h4" className="font-serif font-bold text-earth-900 text-xl sm:text-2xl md:text-3xl leading-snug">
+            {t.subscribers}
           </Typography>
           <Typography variant="body2" className="text-earth-600">
-            View subscriber emails, source origins, and export subscriber lists for mailing tools.
+            {t.subscribersDesc}
           </Typography>
         </div>
         <Button variant="contained" startIcon={<DownloadIcon />} onClick={handleExportCSV} sx={{ bgcolor: '#749D81', '&:hover': { bgcolor: '#587C64' } }}>
-          Export CSV
+          {t.exportCSV}
         </Button>
       </div>
 
       <Box className="p-6 rounded-3xl bg-white border border-cream-200 shadow-sm space-y-4">
         <TextField
           size="small"
-          placeholder="Filter subscribers by email..."
+          placeholder={locale === 'fr' ? 'Filtrer par email...' : 'Filter subscribers by email...'}
           value={searchQuery}
           onChange={e => setSearchQuery(e.target.value)}
           className="w-full sm:w-80"
@@ -53,10 +56,10 @@ export default function AdminSubscribersPage() {
           <Table>
             <TableHead>
               <TableRow>
-                <TableCell className="font-bold">Subscriber Email</TableCell>
-                <TableCell className="font-bold">Origin Article</TableCell>
-                <TableCell className="font-bold">Status</TableCell>
-                <TableCell className="font-bold">Date Subscribed</TableCell>
+                <TableCell className="font-bold">{locale === 'fr' ? 'Email Abonné' : 'Subscriber Email'}</TableCell>
+                <TableCell className="font-bold">{locale === 'fr' ? 'Article d\'Origine' : 'Origin Article'}</TableCell>
+                <TableCell className="font-bold">{t.status}</TableCell>
+                <TableCell className="font-bold">{locale === 'fr' ? 'Date d\'Abonnement' : 'Date Subscribed'}</TableCell>
               </TableRow>
             </TableHead>
             <TableBody>
@@ -65,9 +68,17 @@ export default function AdminSubscribersPage() {
                 return (
                   <TableRow key={sub.id} hover>
                     <TableCell className="font-serif font-semibold text-earth-900">{sub.email}</TableCell>
-                    <TableCell className="text-earth-600 text-sm">{originPost ? originPost.title_en : 'Global Footer / Banner'}</TableCell>
+                    <TableCell className="text-earth-600 text-sm">
+                      {originPost
+                        ? (locale === 'fr' ? originPost.title_fr || originPost.title_en : originPost.title_en)
+                        : (locale === 'fr' ? 'Pied de page / Bannière' : 'Global Footer / Banner')}
+                    </TableCell>
                     <TableCell>
-                      <Chip label={sub.status} size="small" color={sub.status === 'active' ? 'success' : 'default'} />
+                      <Chip
+                        label={sub.status === 'active' ? t.completed : t.pending}
+                        size="small"
+                        color={sub.status === 'active' ? 'success' : 'default'}
+                      />
                     </TableCell>
                     <TableCell>{new Date(sub.created_at).toLocaleDateString()}</TableCell>
                   </TableRow>

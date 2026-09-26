@@ -7,19 +7,21 @@ import VisibilityIcon from '@mui/icons-material/Visibility';
 import FavoriteIcon from '@mui/icons-material/Favorite';
 import MarkEmailReadIcon from '@mui/icons-material/MarkEmailRead';
 import AddIcon from '@mui/icons-material/Add';
+import { DICTIONARY } from '@/lib/i18n';
 import { useApp } from '@/lib/store';
 
 export default function AdminDashboardPage() {
   const { posts, subscriptions, categories, locale } = useApp();
+  const t = DICTIONARY[locale]?.admin || DICTIONARY.en.admin;
 
   const totalViews = posts.reduce((sum, p) => sum + p.views_count, 0);
   const totalLikes = posts.reduce((sum, p) => sum + (p.likes_count || 0), 0);
 
   const stats = [
-    { label: 'Total Articles', value: posts.length, icon: <ArticleIcon fontSize="large" sx={{ color: '#C88A79' }} /> },
-    { label: 'Total Views', value: totalViews.toLocaleString(), icon: <VisibilityIcon fontSize="large" sx={{ color: '#749D81' }} /> },
-    { label: 'Total Likes', value: totalLikes, icon: <FavoriteIcon fontSize="large" sx={{ color: '#E25B45' }} /> },
-    { label: 'Subscribers', value: subscriptions.length, icon: <MarkEmailReadIcon fontSize="large" sx={{ color: '#587C64' }} /> },
+    { label: t.totalArticles, value: posts.length, icon: <ArticleIcon fontSize="large" sx={{ color: '#C88A79' }} /> },
+    { label: t.totalViews, value: totalViews.toLocaleString(), icon: <VisibilityIcon fontSize="large" sx={{ color: '#749D81' }} /> },
+    { label: t.totalLikes, value: totalLikes, icon: <FavoriteIcon fontSize="large" sx={{ color: '#E25B45' }} /> },
+    { label: t.subscribers, value: subscriptions.length, icon: <MarkEmailReadIcon fontSize="large" sx={{ color: '#587C64' }} /> },
   ];
 
   return (
@@ -27,16 +29,16 @@ export default function AdminDashboardPage() {
       {/* Top Header */}
       <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
         <div>
-          <Typography variant="h4" className="font-serif font-bold text-earth-900">
-            Admin Dashboard
+          <Typography variant="h4" className="font-serif font-bold text-earth-900 text-xl sm:text-2xl md:text-3xl leading-snug">
+            {t.dashboard}
           </Typography>
           <Typography variant="body2" className="text-earth-600">
-            Overview of Quiet Life publication metrics and content performance.
+            {t.dashboardDesc}
           </Typography>
         </div>
         <Link href={`/${locale}/admin/posts/new`}>
           <Button variant="contained" startIcon={<AddIcon />} sx={{ bgcolor: '#C88A79', '&:hover': { bgcolor: '#A66E5E' } }}>
-            Create New Article
+            {t.createPost}
           </Button>
         </Link>
       </div>

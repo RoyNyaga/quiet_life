@@ -5,11 +5,14 @@ import { Typography, Button, TextField, Table, TableBody, TableCell, TableContai
 import AddIcon from '@mui/icons-material/Add';
 import EditIcon from '@mui/icons-material/Edit';
 import DeleteIcon from '@mui/icons-material/Delete';
+import { DICTIONARY } from '@/lib/i18n';
 import { useApp } from '@/lib/store';
 import { Tag } from '@/types/database';
 
 export default function AdminTagsPage() {
-  const { tags, createTag, updateTag, deleteTag } = useApp();
+  const { tags, createTag, updateTag, deleteTag, locale } = useApp();
+  const t = DICTIONARY[locale]?.admin || DICTIONARY.en.admin;
+
   const [modalOpen, setModalOpen] = useState(false);
   const [editTag, setEditTag] = useState<Tag | null>(null);
 
@@ -47,15 +50,15 @@ export default function AdminTagsPage() {
     <div className="space-y-6">
       <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
         <div>
-          <Typography variant="h4" className="font-serif font-bold text-earth-900">
-            Tags Management
+          <Typography variant="h4" className="font-serif font-bold text-earth-900 text-xl sm:text-2xl md:text-3xl leading-snug">
+            {t.tags}
           </Typography>
           <Typography variant="body2" className="text-earth-600">
-            Create and edit topic keywords for granular article searching.
+            {t.tagsDesc}
           </Typography>
         </div>
         <Button variant="contained" startIcon={<AddIcon />} onClick={handleOpenCreate} sx={{ bgcolor: '#C88A79', '&:hover': { bgcolor: '#A66E5E' } }}>
-          Add Tag
+          {t.addTag}
         </Button>
       </div>
 
@@ -64,10 +67,10 @@ export default function AdminTagsPage() {
           <Table>
             <TableHead>
               <TableRow>
-                <TableCell className="font-bold">Tag Name (English)</TableCell>
-                <TableCell className="font-bold">Tag Name (French)</TableCell>
-                <TableCell className="font-bold">Slug</TableCell>
-                <TableCell className="font-bold text-right">Actions</TableCell>
+                <TableCell className="font-bold">{t.tagNameEn}</TableCell>
+                <TableCell className="font-bold">{t.tagNameFr}</TableCell>
+                <TableCell className="font-bold">{t.slug}</TableCell>
+                <TableCell className="font-bold text-right">{t.actions}</TableCell>
               </TableRow>
             </TableHead>
             <TableBody>
@@ -94,15 +97,15 @@ export default function AdminTagsPage() {
       {/* Modal Dialog */}
       <Dialog open={modalOpen} onClose={() => setModalOpen(false)} maxWidth="xs" fullWidth slotProps={{ paper: { sx: { borderRadius: 4, p: 2 } } }}>
         <form onSubmit={handleSave}>
-          <DialogTitle className="font-serif font-bold text-earth-900">{editTag ? 'Edit Tag' : 'Create Tag'}</DialogTitle>
+          <DialogTitle className="font-serif font-bold text-earth-900">{editTag ? t.editTag : t.addTag}</DialogTitle>
           <DialogContent className="space-y-4 pt-2">
-            <TextField fullWidth label="Tag Name (English)" value={nameEn} onChange={e => setNameEn(e.target.value)} required />
-            <TextField fullWidth label="Tag Name (French)" value={nameFr} onChange={e => setNameFr(e.target.value)} required />
+            <TextField fullWidth label={t.tagNameEn} value={nameEn} onChange={e => setNameEn(e.target.value)} required />
+            <TextField fullWidth label={t.tagNameFr} value={nameFr} onChange={e => setNameFr(e.target.value)} required />
           </DialogContent>
           <DialogActions className="p-4">
-            <Button onClick={() => setModalOpen(false)}>Cancel</Button>
+            <Button onClick={() => setModalOpen(false)}>{t.cancel}</Button>
             <Button type="submit" variant="contained" sx={{ bgcolor: '#C88A79', '&:hover': { bgcolor: '#A66E5E' } }}>
-              Save Tag
+              {t.save}
             </Button>
           </DialogActions>
         </form>

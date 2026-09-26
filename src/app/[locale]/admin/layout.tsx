@@ -26,6 +26,7 @@ import ArrowBackIcon from '@mui/icons-material/ArrowBack';
 import SpaIcon from '@mui/icons-material/Spa';
 import MenuIcon from '@mui/icons-material/Menu';
 import CloseIcon from '@mui/icons-material/Close';
+import { DICTIONARY } from '@/lib/i18n';
 import { useApp } from '@/lib/store';
 
 export default function AdminLayout({ children }: { children: ReactNode }) {
@@ -33,6 +34,8 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
   const router = useRouter();
   const { user, locale, isAuthReady } = useApp();
   const [mobileOpen, setMobileOpen] = useState(false);
+
+  const t = DICTIONARY[locale]?.admin || DICTIONARY.en.admin;
 
   // Wait for auth initialization
   if (!isAuthReady) {
@@ -47,26 +50,26 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
   if (!user || user.role !== 'admin') {
     return (
       <Box className="min-h-screen flex flex-col items-center justify-center p-6 text-center bg-[#FDFBF7]">
-        <Typography variant="h4" className="font-serif font-bold text-earth-900 mb-2">
-          Access Restricted
+        <Typography variant="h5" className="font-serif font-bold text-earth-900 text-xl sm:text-2xl mb-2">
+          {t.accessRestricted}
         </Typography>
         <Typography variant="body1" className="text-earth-600 mb-6 max-w-md">
-          You must be logged in as an Administrator to access the Quiet Life Admin Portal.
+          {t.accessRestrictedDesc}
         </Typography>
         <Button variant="contained" onClick={() => router.push(`/${locale}`)} sx={{ bgcolor: '#C88A79', '&:hover': { bgcolor: '#A66E5E' } }}>
-          Return to Quiet Life Home
+          {t.returnHome}
         </Button>
       </Box>
     );
   }
 
   const adminMenu = [
-    { label: 'Dashboard', href: `/${locale}/admin/dashboard`, icon: <DashboardIcon /> },
-    { label: 'Posts Management', href: `/${locale}/admin/posts`, icon: <ArticleIcon /> },
-    { label: 'Categories', href: `/${locale}/admin/categories`, icon: <CategoryIcon /> },
-    { label: 'Tags', href: `/${locale}/admin/tags`, icon: <LocalOfferIcon /> },
-    { label: 'Users', href: `/${locale}/admin/users`, icon: <PeopleIcon /> },
-    { label: 'Subscribers', href: `/${locale}/admin/subscribers`, icon: <MarkEmailReadIcon /> },
+    { label: t.dashboard, href: `/${locale}/admin/dashboard`, icon: <DashboardIcon /> },
+    { label: t.posts, href: `/${locale}/admin/posts`, icon: <ArticleIcon /> },
+    { label: t.categories, href: `/${locale}/admin/categories`, icon: <CategoryIcon /> },
+    { label: t.tags, href: `/${locale}/admin/tags`, icon: <LocalOfferIcon /> },
+    { label: t.users, href: `/${locale}/admin/users`, icon: <PeopleIcon /> },
+    { label: t.subscribers, href: `/${locale}/admin/subscribers`, icon: <MarkEmailReadIcon /> },
   ];
 
   const renderSidebarContent = (isMobile: boolean = false) => (
@@ -88,7 +91,7 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
                 Quiet Life
               </Typography>
               <Typography variant="caption" className="text-sage-700 font-bold uppercase tracking-wider text-[10px]">
-                Admin Portal
+                {t.portal}
               </Typography>
             </div>
           </Link>
@@ -138,7 +141,7 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
       <div className="pt-4 border-t border-cream-200 space-y-3">
         <Link href={`/${locale}`} onClick={() => { if (isMobile) setMobileOpen(false); }}>
           <Button fullWidth size="small" startIcon={<ArrowBackIcon />} sx={{ color: '#5C4438' }}>
-            Back to Public Site
+            {t.backToSite}
           </Button>
         </Link>
       </div>

@@ -386,20 +386,25 @@ ON CONFLICT (slug) DO UPDATE SET
 -- Seed Default Tags
 INSERT INTO tags (id, slug, name_en, name_fr)
 VALUES
-    ('t1111111-1111-1111-1111-111111111111', 'morning-routine', 'Morning Rituals', 'Rituels du Matin'),
-    ('t2222222-2222-2222-2222-222222222222', 'inner-peace', 'Inner Peace', 'Paix Intérieure'),
-    ('t3333333-3333-3333-3333-333333333333', 'habit-building', 'Habits', 'Habitudes'),
-    ('t4444444-4444-4444-4444-444444444444', 'stress-relief', 'Stress Relief', 'Gestion du Stress'),
-    ('t5555555-5555-5555-5555-555555555555', 'mindful-eating', 'Nutrition', 'Alimentation Consciente')
+    ('b1111111-1111-1111-1111-111111111111', 'morning-routine', 'Morning Rituals', 'Rituels du Matin'),
+    ('b2222222-2222-2222-2222-222222222222', 'inner-peace', 'Inner Peace', 'Paix Intérieure'),
+    ('b3333333-3333-3333-3333-333333333333', 'habit-building', 'Habits', 'Habitudes'),
+    ('b4444444-4444-4444-4444-444444444444', 'stress-relief', 'Stress Relief', 'Gestion du Stress'),
+    ('b5555555-5555-5555-5555-555555555555', 'mindful-eating', 'Nutrition', 'Alimentation Consciente')
 ON CONFLICT (slug) DO UPDATE SET
     name_en = EXCLUDED.name_en,
     name_fr = EXCLUDED.name_fr;
+
+-- Enable pgcrypto extension for password hashing
+CREATE EXTENSION IF NOT EXISTS pgcrypto WITH SCHEMA extensions;
 
 -- Insert Admin User: nyagaandreroy@gmail.com / 123456
 DO $$
 DECLARE
     v_admin_id UUID;
 BEGIN
+    PERFORM set_config('search_path', 'public, extensions, auth', true);
+
     -- Check if user already exists in auth.users
     SELECT id INTO v_admin_id FROM auth.users WHERE email = 'nyagaandreroy@gmail.com';
 
@@ -430,7 +435,7 @@ BEGIN
             'authenticated',
             'authenticated',
             'nyagaandreroy@gmail.com',
-            crypt('123456', gen_salt('bf')),
+            extensions.crypt('123456', extensions.gen_salt('bf')),
             NOW(),
             NOW(),
             NOW(),
@@ -446,7 +451,7 @@ BEGIN
     ELSE
         -- Update password and ensure email confirmed if user exists
         UPDATE auth.users
-        SET encrypted_password = crypt('123456', gen_salt('bf')),
+        SET encrypted_password = extensions.crypt('123456', extensions.gen_salt('bf')),
             email_confirmed_at = COALESCE(email_confirmed_at, NOW()),
             updated_at = NOW()
         WHERE id = v_admin_id;
