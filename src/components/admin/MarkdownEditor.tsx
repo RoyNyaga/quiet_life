@@ -107,6 +107,7 @@ export function MarkdownEditor({
   };
 
   // Helper for block-level elements (headings, quotes, lists)
+  // Helper for block-level elements (headings, quotes, lists)
   const insertBlockPrefix = (prefix: string, placeholder: string = '') => {
     const textarea = textareaRef.current;
     if (!textarea) return;
@@ -117,12 +118,25 @@ export function MarkdownEditor({
     const after = value.substring(end);
     const selectedText = value.substring(start, end);
 
-    // Check if on a fresh line
-    const needsNewlineBefore = before.length > 0 && !before.endsWith('\n');
-    const prepend = needsNewlineBefore ? `\n${prefix}` : prefix;
+    // Ensure a space exists after prefix (e.g. '# ' not '#', '1. ' not '1.')
+    const formattedPrefix = prefix.endsWith(' ') ? prefix : `${prefix} `;
+
+    // Ensure block-level elements have a blank line before them if preceded by text
+    let prepend = '';
+    if (before.length > 0) {
+      if (before.endsWith('\n\n')) {
+        prepend = formattedPrefix;
+      } else if (before.endsWith('\n')) {
+        prepend = `\n${formattedPrefix}`;
+      } else {
+        prepend = `\n\n${formattedPrefix}`;
+      }
+    } else {
+      prepend = formattedPrefix;
+    }
 
     const textToInsert = selectedText || placeholder;
-    const replacement = `${prepend}${textToInsert} `;
+    const replacement = `${prepend}${textToInsert}\n`;
 
     const newValue = before + replacement + after;
     onChange(newValue);

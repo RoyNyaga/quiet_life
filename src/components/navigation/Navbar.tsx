@@ -9,7 +9,7 @@ import BookmarkIcon from '@mui/icons-material/Bookmark';
 import MenuIcon from '@mui/icons-material/Menu';
 import CloseIcon from '@mui/icons-material/Close';
 import AdminPanelSettingsIcon from '@mui/icons-material/AdminPanelSettings';
-import SpaIcon from '@mui/icons-material/Spa';
+import Image from 'next/image';
 import { useApp } from '@/lib/store';
 import { DICTIONARY } from '@/lib/i18n';
 import { Locale } from '@/types/database';
@@ -46,15 +46,23 @@ export function Navbar() {
       <AppBar position="sticky" elevation={0} sx={{ bgcolor: '#FDFBF7', borderBottom: '1px solid #E8E2DA' }}>
         <Toolbar className="max-w-7xl mx-auto w-full flex items-center justify-between px-4 py-1">
           {/* Logo */}
-          <Link href={`/${locale}`} className="flex items-center gap-2 text-earth-900 group">
-            <div className="w-10 h-10 rounded-xl bg-terracotta-100 flex items-center justify-center text-terracotta-600 transition-transform group-hover:scale-105">
-              <SpaIcon fontSize="medium" />
+          <Link href={`/${locale}`} className="flex items-center gap-2.5 text-earth-900 group">
+            <div className="w-10 h-10 rounded-xl bg-white/80 border border-cream-200/80 flex items-center justify-center p-1 transition-transform duration-200 group-hover:scale-105 shadow-xs">
+              <Image
+                src="/logo-icon.png"
+                alt="Quiet Life Logo"
+                width={36}
+                height={36}
+                className="w-full h-full object-contain"
+                priority
+              />
             </div>
             <div>
-              <Typography variant="h6" className="font-serif font-bold text-earth-900 tracking-tight leading-none">
-                Quiet Life
-              </Typography>
-              <Typography variant="caption" className="font-sans text-earth-500 text-[10px] tracking-widest uppercase block">
+              <div className="font-sans font-bold text-xl tracking-tight leading-none flex items-center gap-1">
+                <span className="text-[#A87462]">Quiet</span>
+                <span className="text-[#60866E]">Life</span>
+              </div>
+              <Typography variant="caption" className="font-sans text-earth-500 text-[10px] tracking-widest uppercase block mt-0.5">
                 Mindful Living
               </Typography>
             </div>
@@ -194,9 +202,26 @@ export function Navbar() {
         slotProps={{ paper: { sx: { width: 280, p: 3, background: '#FDFBF7' } } }}
       >
         <Box className="flex items-center justify-between pb-4 border-b border-cream-200">
-          <Typography variant="h6" className="font-serif font-bold text-earth-900">
-            Quiet Life
-          </Typography>
+          <Link href={`/${locale}`} onClick={() => setMobileMenuOpen(false)} className="flex items-center gap-2.5">
+            <div className="w-9 h-9 rounded-xl bg-white/80 border border-cream-200 flex items-center justify-center p-1 shadow-xs">
+              <Image
+                src="/logo-icon.png"
+                alt="Quiet Life Logo"
+                width={32}
+                height={32}
+                className="w-full h-full object-contain"
+              />
+            </div>
+            <div>
+              <div className="font-sans font-bold text-lg tracking-tight leading-none flex items-center gap-1">
+                <span className="text-[#A87462]">Quiet</span>
+                <span className="text-[#60866E]">Life</span>
+              </div>
+              <Typography variant="caption" className="font-sans text-earth-500 text-[9px] tracking-widest uppercase block mt-0.5">
+                Mindful Living
+              </Typography>
+            </div>
+          </Link>
           <IconButton onClick={() => setMobileMenuOpen(false)}>
             <CloseIcon />
           </IconButton>

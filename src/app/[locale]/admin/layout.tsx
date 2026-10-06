@@ -15,6 +15,7 @@ import {
   IconButton,
   Drawer,
   CircularProgress,
+  Alert,
 } from '@mui/material';
 import DashboardIcon from '@mui/icons-material/Dashboard';
 import ArticleIcon from '@mui/icons-material/Article';
@@ -23,7 +24,7 @@ import LocalOfferIcon from '@mui/icons-material/LocalOffer';
 import PeopleIcon from '@mui/icons-material/People';
 import MarkEmailReadIcon from '@mui/icons-material/MarkEmailRead';
 import ArrowBackIcon from '@mui/icons-material/ArrowBack';
-import SpaIcon from '@mui/icons-material/Spa';
+import Image from 'next/image';
 import MenuIcon from '@mui/icons-material/Menu';
 import CloseIcon from '@mui/icons-material/Close';
 import { DICTIONARY } from '@/lib/i18n';
@@ -32,7 +33,7 @@ import { useApp } from '@/lib/store';
 export default function AdminLayout({ children }: { children: ReactNode }) {
   const pathname = usePathname();
   const router = useRouter();
-  const { user, locale, isAuthReady } = useApp();
+  const { user, locale, isAuthReady, notification, clearNotification } = useApp();
   const [mobileOpen, setMobileOpen] = useState(false);
 
   const t = DICTIONARY[locale]?.admin || DICTIONARY.en.admin;
@@ -81,16 +82,23 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
             onClick={() => {
               if (isMobile) setMobileOpen(false);
             }}
-            className="flex items-center gap-2 px-3 py-2 text-earth-900"
+            className="flex items-center gap-2.5 px-3 py-2 text-earth-900 group"
           >
-            <div className="w-9 h-9 rounded-xl bg-sage-100 flex items-center justify-center text-sage-700">
-              <SpaIcon />
+            <div className="w-9 h-9 rounded-xl bg-white border border-cream-200 flex items-center justify-center p-1 shadow-xs transition-transform duration-200 group-hover:scale-105">
+              <Image
+                src="/logo-icon.png"
+                alt="Quiet Life"
+                width={32}
+                height={32}
+                className="w-full h-full object-contain"
+              />
             </div>
             <div>
-              <Typography variant="subtitle1" className="font-serif font-bold text-earth-900 leading-none">
-                Quiet Life
-              </Typography>
-              <Typography variant="caption" className="text-sage-700 font-bold uppercase tracking-wider text-[10px]">
+              <div className="font-sans font-bold text-base tracking-tight leading-none flex items-center gap-1">
+                <span className="text-[#A87462]">Quiet</span>
+                <span className="text-[#60866E]">Life</span>
+              </div>
+              <Typography variant="caption" className="text-sage-700 font-bold uppercase tracking-wider text-[10px] block mt-0.5">
                 {t.portal}
               </Typography>
             </div>
@@ -162,14 +170,21 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
             <MenuIcon />
           </IconButton>
           <Link href={`/${locale}/admin/dashboard`} className="flex items-center gap-2 text-earth-900">
-            <div className="w-8 h-8 rounded-xl bg-sage-100 flex items-center justify-center text-sage-700">
-              <SpaIcon fontSize="small" />
+            <div className="w-8 h-8 rounded-xl bg-white border border-cream-200 flex items-center justify-center p-0.5 shadow-xs">
+              <Image
+                src="/logo-icon.png"
+                alt="Quiet Life"
+                width={28}
+                height={28}
+                className="w-full h-full object-contain"
+              />
             </div>
             <div>
-              <Typography variant="subtitle2" className="font-serif font-bold text-earth-900 leading-none">
-                Quiet Life
-              </Typography>
-              <Typography variant="caption" className="text-sage-700 font-bold uppercase tracking-wider text-[9px] block">
+              <div className="font-sans font-bold text-sm tracking-tight leading-none flex items-center gap-1">
+                <span className="text-[#A87462]">Quiet</span>
+                <span className="text-[#60866E]">Life</span>
+              </div>
+              <Typography variant="caption" className="text-sage-700 font-bold uppercase tracking-wider text-[9px] block mt-0.5">
                 Admin Portal
               </Typography>
             </div>
@@ -210,6 +225,29 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
 
       {/* Main Admin Content */}
       <main className="flex-1 p-4 sm:p-6 md:p-10 max-w-6xl overflow-y-auto">
+        {notification && (
+          <Box className="mb-6">
+            <Alert
+              severity={notification.type}
+              onClose={clearNotification}
+              sx={{
+                borderRadius: '16px',
+                fontSize: '0.875rem',
+                fontWeight: 500,
+                boxShadow: '0 4px 16px rgba(0,0,0,0.06)',
+                border: '1px solid',
+                borderColor:
+                  notification.type === 'error'
+                    ? 'rgba(211, 47, 47, 0.25)'
+                    : notification.type === 'success'
+                    ? 'rgba(46, 125, 50, 0.25)'
+                    : 'rgba(237, 108, 2, 0.25)',
+              }}
+            >
+              {notification.message}
+            </Alert>
+          </Box>
+        )}
         {children}
       </main>
     </div>
