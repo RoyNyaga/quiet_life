@@ -7,15 +7,12 @@ async function createIcons() {
   const originalJpeg = path.join(root, 'public', 'logo.jpeg');
 
   // 1. Crop emblem from original logo.jpeg
-  // bbox: minX: 497, maxX: 780, minY: 222, maxY: 543
-  // Center is ~639, 382. Size 340x340.
   const { data, info } = await sharp(originalJpeg)
-    .extract({ left: 469, top: 210, width: 340, height: 340 })
+    .extract({ left: 450, top: 190, width: 380, height: 380 })
     .raw()
     .toBuffer({ resolveWithObject: true });
 
   const { width, height } = info;
-  // Create RGBA buffer with transparent background
   const rgba = Buffer.alloc(width * height * 4);
 
   for (let y = 0; y < height; y++) {
@@ -26,16 +23,13 @@ async function createIcons() {
       const g = data[srcIdx + 1];
       const b = data[srcIdx + 2];
 
-      // Measure distance from cream background (approx 249, 248, 243)
-      // Brightness / lightness
       const lightness = 0.299 * r + 0.587 * g + 0.114 * b;
 
       let alpha = 255;
       if (lightness >= 246) {
         alpha = 0;
-      } else if (lightness >= 235) {
-        // smooth anti-aliased edge
-        const t = (246 - lightness) / (246 - 235);
+      } else if (lightness >= 234) {
+        const t = (246 - lightness) / (246 - 234);
         alpha = Math.round(t * 255);
       }
 
@@ -46,15 +40,40 @@ async function createIcons() {
     }
   }
 
+  // Convert raw rgba to png buffer first
+  const pngBuffer = await sharp(rgba, { raw: { width, height, channels: 4 } })
+    .png()
+    .toBuffer();
+
+  // Trim transparent edges so we have the exact emblem bounds
+  const trimmed = await sharp(pngBuffer)
+    .trim({ threshold: 10 })
+    .toBuffer({ resolveWithObject: true });
+
+  const tw = trimmed.info.width;
+  const th = trimmed.info.height;
+  const targetSize = Math.max(tw, th) + 40; // 20px padding all around
+  const padTop = Math.floor((targetSize - th) / 2);
+  const padBottom = targetSize - th - padTop;
+  const padLeft = Math.floor((targetSize - tw) / 2);
+  const padRight = targetSize - tw - padLeft;
+
   const transparentEmblemPath = path.join(root, 'public', 'logo-icon.png');
-  await sharp(rgba, { raw: { width, height, channels: 4 } })
+  await sharp(trimmed.data)
+    .extend({
+      top: padTop,
+      bottom: padBottom,
+      left: padLeft,
+      right: padRight,
+      background: { r: 0, g: 0, b: 0, alpha: 0 },
+    })
+    .resize(360, 360)
     .png()
     .toFile(transparentEmblemPath);
 
-  // 2. Create the clean Squircle App Icon (512x512) for Apple Touch Icon, PWA & High-res Favicon
-  // with subtle gradient & shadow, perfectly matching the original squircle
+  // 2. Create the clean Squircle App Icon (512x512) for Apple Touch Icon & Favicon
   const transparentEmblemBuf = await sharp(transparentEmblemPath)
-    .resize(370, 370, { fit: 'contain' })
+    .resize(380, 380, { fit: 'contain' })
     .toBuffer();
 
   const squircleSvg = `<svg width="512" height="512" viewBox="0 0 512 512" xmlns="http://www.w3.org/2000/svg">
@@ -71,20 +90,19 @@ async function createIcons() {
   </svg>`;
 
   const icon512 = await sharp(Buffer.from(squircleSvg))
-    .composite([{ input: transparentEmblemBuf, top: 71, left: 71 }])
+    .composite([{ input: transparentEmblemBuf, top: 66, left: 66 }])
     .png()
     .toBuffer();
 
   await sharp(icon512).toFile(path.join(root, 'public', 'logo-app-icon.png'));
 
   // 3. Browser Tab Icons / Favicon
-  // Tab icon 32x32: Next.js App Router uses src/app/icon.png
   await sharp(icon512).resize(32, 32).toFile(path.join(root, 'src', 'app', 'icon.png'));
   await sharp(icon512).resize(180, 180).toFile(path.join(root, 'src', 'app', 'apple-icon.png'));
   await sharp(icon512).resize(48, 48).toFile(path.join(root, 'src', 'app', 'favicon.ico'));
   await sharp(icon512).resize(48, 48).toFile(path.join(root, 'public', 'favicon.ico'));
 
-  console.log('Successfully generated transparent emblem and all tab icons!');
+  console.log('Successfully re-centered and generated all icons!');
 }
 
 createIcons().catch(err => {

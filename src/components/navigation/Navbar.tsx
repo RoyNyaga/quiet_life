@@ -46,8 +46,8 @@ export function Navbar() {
       <AppBar position="sticky" elevation={0} sx={{ bgcolor: '#FDFBF7', borderBottom: '1px solid #E8E2DA' }}>
         <Toolbar className="max-w-7xl mx-auto w-full flex items-center justify-between px-4 py-1">
           {/* Logo */}
-          <Link href={`/${locale}`} className="flex items-center gap-2.5 text-earth-900 group">
-            <div className="w-10 h-10 rounded-xl bg-white/80 border border-cream-200/80 flex items-center justify-center p-1 transition-transform duration-200 group-hover:scale-105 shadow-xs">
+          <Link href={`/${locale}`} className="flex items-center gap-2 sm:gap-2.5 text-earth-900 group shrink-0">
+            <div className="w-8 h-8 sm:w-9 sm:h-9 md:w-10 md:h-10 rounded-xl bg-white/90 border border-cream-200 flex items-center justify-center p-1 transition-transform duration-200 group-hover:scale-105 shadow-xs shrink-0">
               <Image
                 src="/logo-icon.png"
                 alt="Quiet Life Logo"
@@ -57,14 +57,14 @@ export function Navbar() {
                 priority
               />
             </div>
-            <div>
-              <div className="font-sans font-bold text-xl tracking-tight leading-none flex items-center gap-1">
+            <div className="flex flex-col justify-center">
+              <div className="font-sans font-bold text-[15px] sm:text-[17px] md:text-lg tracking-tight leading-tight flex items-center gap-1">
                 <span className="text-[#A87462]">Quiet</span>
                 <span className="text-[#60866E]">Life</span>
               </div>
-              <Typography variant="caption" className="font-sans text-earth-500 text-[10px] tracking-widest uppercase block mt-0.5">
+              <span className="font-sans text-earth-600 text-[8px] sm:text-[9px] tracking-widest uppercase font-semibold leading-none mt-0.5">
                 Mindful Living
-              </Typography>
+              </span>
             </div>
           </Link>
 
@@ -202,24 +202,24 @@ export function Navbar() {
         slotProps={{ paper: { sx: { width: 280, p: 3, background: '#FDFBF7' } } }}
       >
         <Box className="flex items-center justify-between pb-4 border-b border-cream-200">
-          <Link href={`/${locale}`} onClick={() => setMobileMenuOpen(false)} className="flex items-center gap-2.5">
-            <div className="w-9 h-9 rounded-xl bg-white/80 border border-cream-200 flex items-center justify-center p-1 shadow-xs">
+          <Link href={`/${locale}`} onClick={() => setMobileMenuOpen(false)} className="flex items-center gap-2">
+            <div className="w-8 h-8 rounded-xl bg-white/90 border border-cream-200 flex items-center justify-center p-1 shadow-xs shrink-0">
               <Image
                 src="/logo-icon.png"
                 alt="Quiet Life Logo"
-                width={32}
-                height={32}
+                width={30}
+                height={30}
                 className="w-full h-full object-contain"
               />
             </div>
-            <div>
-              <div className="font-sans font-bold text-lg tracking-tight leading-none flex items-center gap-1">
+            <div className="flex flex-col justify-center">
+              <div className="font-sans font-bold text-[15px] tracking-tight leading-tight flex items-center gap-1">
                 <span className="text-[#A87462]">Quiet</span>
                 <span className="text-[#60866E]">Life</span>
               </div>
-              <Typography variant="caption" className="font-sans text-earth-500 text-[9px] tracking-widest uppercase block mt-0.5">
+              <span className="font-sans text-earth-600 text-[8px] tracking-widest uppercase font-semibold leading-none mt-0.5">
                 Mindful Living
-              </Typography>
+              </span>
             </div>
           </Link>
           <IconButton onClick={() => setMobileMenuOpen(false)}>

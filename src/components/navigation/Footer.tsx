@@ -39,14 +39,14 @@ export function Footer() {
                 className="w-full h-full object-contain"
               />
             </div>
-            <div>
-              <div className="font-sans font-bold text-lg tracking-tight leading-none flex items-center gap-1">
+            <div className="flex flex-col justify-center">
+              <div className="font-sans font-bold text-lg tracking-tight leading-tight flex items-center gap-1">
                 <span className="text-[#A87462]">Quiet</span>
                 <span className="text-[#60866E]">Life</span>
               </div>
-              <Typography variant="caption" className="font-sans text-earth-500 text-[9px] tracking-widest uppercase block mt-0.5">
+              <span className="font-sans text-earth-600 text-[9px] tracking-widest uppercase font-semibold leading-none mt-0.5">
                 Mindful Living
-              </Typography>
+              </span>
             </div>
           </Link>
           <Typography variant="body2" className="text-earth-600 leading-relaxed">

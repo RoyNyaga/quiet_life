@@ -93,14 +93,14 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
                 className="w-full h-full object-contain"
               />
             </div>
-            <div>
-              <div className="font-sans font-bold text-base tracking-tight leading-none flex items-center gap-1">
+            <div className="flex flex-col justify-center">
+              <div className="font-sans font-bold text-base tracking-tight leading-tight flex items-center gap-1">
                 <span className="text-[#A87462]">Quiet</span>
                 <span className="text-[#60866E]">Life</span>
               </div>
-              <Typography variant="caption" className="text-sage-700 font-bold uppercase tracking-wider text-[10px] block mt-0.5">
+              <span className="text-sage-700 font-bold uppercase tracking-wider text-[10px] block leading-none mt-0.5">
                 {t.portal}
-              </Typography>
+              </span>
             </div>
           </Link>
 
@@ -179,14 +179,14 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
                 className="w-full h-full object-contain"
               />
             </div>
-            <div>
-              <div className="font-sans font-bold text-sm tracking-tight leading-none flex items-center gap-1">
+            <div className="flex flex-col justify-center">
+              <div className="font-sans font-bold text-sm tracking-tight leading-tight flex items-center gap-1">
                 <span className="text-[#A87462]">Quiet</span>
                 <span className="text-[#60866E]">Life</span>
               </div>
-              <Typography variant="caption" className="text-sage-700 font-bold uppercase tracking-wider text-[9px] block mt-0.5">
+              <span className="text-sage-700 font-bold uppercase tracking-wider text-[9px] block leading-none mt-0.5">
                 Admin Portal
-              </Typography>
+              </span>
             </div>
           </Link>
         </div>
