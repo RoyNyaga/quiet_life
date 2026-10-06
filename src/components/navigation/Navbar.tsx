@@ -57,7 +57,7 @@ export function Navbar() {
                 priority
               />
             </div>
-            <div className="flex flex-col justify-center">
+            <div className="flex flex-col justify-center translate-y-0.5 sm:translate-y-1">
               <div className="font-sans font-bold text-[15px] sm:text-[17px] md:text-lg tracking-tight leading-tight flex items-center gap-1">
                 <span className="text-[#A87462]">Quiet</span>
                 <span className="text-[#60866E]">Life</span>
@@ -212,7 +212,7 @@ export function Navbar() {
                 className="w-full h-full object-contain"
               />
             </div>
-            <div className="flex flex-col justify-center">
+            <div className="flex flex-col justify-center translate-y-0.5">
               <div className="font-sans font-bold text-[15px] tracking-tight leading-tight flex items-center gap-1">
                 <span className="text-[#A87462]">Quiet</span>
                 <span className="text-[#60866E]">Life</span>
