@@ -20,6 +20,7 @@ import {
   SelectChangeEvent,
   FormControlLabel,
   Checkbox,
+  CircularProgress,
 } from '@mui/material';
 import SaveIcon from '@mui/icons-material/Save';
 import VisibilityIcon from '@mui/icons-material/Visibility';
@@ -125,40 +126,52 @@ function PostEditorContent() {
     setSelectedTagIds(typeof value === 'string' ? value.split(',') : value);
   };
 
-  const handleSave = (e?: React.FormEvent) => {
+  const [isSaving, setIsSaving] = useState(false);
+
+  const handleSave = async (e?: React.FormEvent) => {
     if (e) e.preventDefault();
+    if (isSaving) return;
     if (!titleEn.trim() || !contentEn.trim()) {
       alert('Please provide at least an English title and markdown content.');
       return;
     }
 
-    const assignedTags = tags
-      .filter(t => selectedTagIds.includes(t.id))
-      .map(t => ({ tags: t }));
+    setIsSaving(true);
+    try {
+      const assignedTags = tags
+        .filter(t => selectedTagIds.includes(t.id))
+        .map(t => ({ tags: t }));
 
-    const postPayload = {
-      title_en: titleEn,
-      title_fr: titleFr,
-      slug: slug || `article-${Date.now()}`,
-      slug_source_locale: slugSourceLocale,
-      excerpt_en: excerptEn,
-      excerpt_fr: excerptFr,
-      content_markdown_en: contentEn,
-      content_markdown_fr: contentFr,
-      category_id: categoryId,
-      cover_image_url: coverImageUrl || null,
-      read_time_minutes: readTime || 5,
-      status,
-      post_tags: assignedTags,
-    };
+      const postPayload = {
+        title_en: titleEn,
+        title_fr: titleFr,
+        slug: slug || `article-${Date.now()}`,
+        slug_source_locale: slugSourceLocale,
+        excerpt_en: excerptEn,
+        excerpt_fr: excerptFr,
+        content_markdown_en: contentEn,
+        content_markdown_fr: contentFr,
+        category_id: categoryId,
+        cover_image_url: coverImageUrl || null,
+        read_time_minutes: readTime || 5,
+        status,
+        post_tags: assignedTags,
+      };
 
-    if (editId) {
-      updatePost(editId, postPayload);
-    } else {
-      createPost(postPayload);
+      if (editId) {
+        const ok = await updatePost(editId, postPayload);
+        if (ok) {
+          router.push(`/${locale}/admin/posts`);
+        }
+      } else {
+        const ok = await createPost(postPayload);
+        if (ok) {
+          router.push(`/${locale}/admin/posts`);
+        }
+      }
+    } finally {
+      setIsSaving(false);
     }
-
-    router.push(`/${locale}/admin/posts`);
   };
 
   return (
@@ -194,7 +207,8 @@ function PostEditorContent() {
           </Button>
           <Button
             variant="contained"
-            startIcon={<SaveIcon />}
+            disabled={isSaving}
+            startIcon={isSaving ? <CircularProgress size={18} color="inherit" /> : <SaveIcon />}
             onClick={handleSave}
             sx={{
               bgcolor: '#C88A79',
@@ -204,7 +218,7 @@ function PostEditorContent() {
               px: 3,
             }}
           >
-            {editId ? t.updateArticle : t.saveAndPublish}
+            {isSaving ? (editId ? 'Updating...' : 'Publishing...') : (editId ? t.updateArticle : t.saveAndPublish)}
           </Button>
         </div>
       </div>

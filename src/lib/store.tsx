@@ -29,9 +29,9 @@ interface AppContextType {
   setNotification: (notif: AppNotification | null) => void;
   clearNotification: () => void;
   // Actions
-  createPost: (post: Partial<Post>) => void;
-  updatePost: (id: string, post: Partial<Post>) => void;
-  deletePost: (id: string) => void;
+  createPost: (post: Partial<Post>) => Promise<boolean>;
+  updatePost: (id: string, post: Partial<Post>) => Promise<boolean>;
+  deletePost: (id: string) => Promise<boolean>;
   togglePostLike: (postId: string) => void;
   incrementViews: (postId: string) => void;
   addComment: (comment: Partial<Comment>) => void;
@@ -106,10 +106,19 @@ export function AppProvider({ children, initialLocale = 'en' }: { children: Reac
   };
 
   const setUser = (newUser: Profile | null) => {
-    setUserState(newUser);
+    let sanitizedUser = newUser;
+    if (sanitizedUser) {
+      if (sanitizedUser.id === 'admin-nyaga' || sanitizedUser.id === 'admin-101') {
+        sanitizedUser = {
+          ...sanitizedUser,
+          id: '22388a63-3518-45cd-b195-5fb7cdb0f871',
+        };
+      }
+    }
+    setUserState(sanitizedUser);
     if (typeof window !== 'undefined') {
-      if (newUser) {
-        localStorage.setItem('quiet_life_user', JSON.stringify(newUser));
+      if (sanitizedUser) {
+        localStorage.setItem('quiet_life_user', JSON.stringify(sanitizedUser));
       } else {
         localStorage.removeItem('quiet_life_user');
       }
@@ -140,22 +149,13 @@ export function AppProvider({ children, initialLocale = 'en' }: { children: Reac
       const savedLocale = localStorage.getItem('quiet_life_locale') as Locale;
       if (savedLocale) setLocaleState(savedLocale);
 
-      // Clean out any legacy cached posts in localStorage
+      // Clean out any legacy deceptive collections in localStorage
       localStorage.removeItem('quiet_life_posts');
+      localStorage.removeItem('quiet_life_reading_lists');
+      localStorage.removeItem('quiet_life_reading_list_items');
+      localStorage.removeItem('quiet_life_categories');
 
-      const savedCats = localStorage.getItem('quiet_life_categories');
-      if (savedCats) {
-        try {
-          const parsed = JSON.parse(savedCats);
-          if (Array.isArray(parsed) && parsed.length > 0) {
-            setCategories(parsed);
-          }
-        } catch (e) {
-          console.warn('Error reading saved categories:', e);
-        }
-      }
-
-      // Clean out legacy mock users (e.g. Elena Vance)
+      // Check saved user session
       const savedUser = localStorage.getItem('quiet_life_user');
       if (savedUser) {
         try {
@@ -163,6 +163,10 @@ export function AppProvider({ children, initialLocale = 'en' }: { children: Reac
           if (parsed?.id === 'admin-101' || parsed?.full_name === 'Elena Vance') {
             localStorage.removeItem('quiet_life_user');
             setUser(null);
+          } else if (parsed?.id === 'admin-nyaga') {
+            const updated = { ...parsed, id: '22388a63-3518-45cd-b195-5fb7cdb0f871' };
+            setUser(updated);
+            localStorage.setItem('quiet_life_user', JSON.stringify(updated));
           } else if (parsed?.id) {
             setUser(parsed);
           }
@@ -170,32 +174,8 @@ export function AppProvider({ children, initialLocale = 'en' }: { children: Reac
           console.warn('Error reading saved user:', e);
         }
       }
-      // Load saved reading lists & items
-      const savedLists = localStorage.getItem('quiet_life_reading_lists');
-      if (savedLists) {
-        try {
-          const parsed = JSON.parse(savedLists);
-          if (Array.isArray(parsed) && parsed.length > 0) {
-            setReadingLists(parsed);
-          }
-        } catch (e) {
-          console.warn('Error reading saved reading lists:', e);
-        }
-      }
-
-      const savedListItems = localStorage.getItem('quiet_life_reading_list_items');
-      if (savedListItems) {
-        try {
-          const parsed = JSON.parse(savedListItems);
-          if (Array.isArray(parsed) && parsed.length > 0) {
-            setReadingListItems(parsed);
-          }
-        } catch (e) {
-          console.warn('Error reading saved reading list items:', e);
-        }
-      }
     } catch (e) {
-      console.warn('LocalStorage error:', e);
+      console.warn('LocalStorage initialization error:', e);
     } finally {
       setIsAuthReady(true);
     }
@@ -203,6 +183,36 @@ export function AppProvider({ children, initialLocale = 'en' }: { children: Reac
     // Connect with Supabase
     const supabase = createClient();
     if (supabase) {
+      const syncReadingLists = (userId: string) => {
+        if (!userId || userId.startsWith('guest')) {
+          setReadingLists([]);
+          setReadingListItems([]);
+          return;
+        }
+        const client = createClient();
+        if (!client) return;
+
+        client
+          .from('reading_lists')
+          .select('*')
+          .eq('user_id', userId)
+          .order('created_at', { ascending: false })
+          .then(({ data: remoteLists, error }) => {
+            if (!error && remoteLists) {
+              setReadingLists(remoteLists);
+            }
+          });
+
+        client
+          .from('reading_list_items')
+          .select('*')
+          .then(({ data: remoteItems, error }) => {
+            if (!error && remoteItems) {
+              setReadingListItems(remoteItems);
+            }
+          });
+      };
+
       // 1. Fetch current session user & profile
       supabase.auth.getSession().then(async ({ data: { session } }) => {
         if (session?.user) {
@@ -214,7 +224,21 @@ export function AppProvider({ children, initialLocale = 'en' }: { children: Reac
 
           if (profile) {
             setUser(profile);
-            localStorage.setItem('quiet_life_user', JSON.stringify(profile));
+            syncReadingLists(profile.id);
+          } else {
+            syncReadingLists(session.user.id);
+          }
+        } else {
+          // If no active session, check if a stored user profile exists
+          const currentStoredUser = localStorage.getItem('quiet_life_user');
+          if (currentStoredUser) {
+            try {
+              const parsed = JSON.parse(currentStoredUser);
+              const effectiveId = parsed?.id === 'admin-nyaga' ? '22388a63-3518-45cd-b195-5fb7cdb0f871' : parsed?.id;
+              if (effectiveId) {
+                syncReadingLists(effectiveId);
+              }
+            } catch (_) {}
           }
         }
       });
@@ -239,20 +263,21 @@ export function AppProvider({ children, initialLocale = 'en' }: { children: Reac
           };
 
           setUser(activeProfile);
-          localStorage.setItem('quiet_life_user', JSON.stringify(activeProfile));
+          syncReadingLists(activeProfile.id);
         } else if (event === 'SIGNED_OUT') {
           setUser(null);
+          setReadingLists([]);
+          setReadingListItems([]);
           localStorage.removeItem('quiet_life_user');
         }
       });
 
-      // 3. Fetch categories from /api/categories
+      // 3. Fetch categories from /api/categories (or Supabase fallback)
       fetch('/api/categories')
         .then(res => res.json())
         .then(res => {
           if (res.data && res.data.length > 0) {
             setCategories(res.data);
-            localStorage.setItem('quiet_life_categories', JSON.stringify(res.data));
           }
         })
         .catch(err => {
@@ -263,7 +288,6 @@ export function AppProvider({ children, initialLocale = 'en' }: { children: Reac
             .then(({ data: remoteCats }) => {
               if (remoteCats && remoteCats.length > 0) {
                 setCategories(remoteCats);
-                localStorage.setItem('quiet_life_categories', JSON.stringify(remoteCats));
               }
             });
         });
@@ -281,7 +305,7 @@ export function AppProvider({ children, initialLocale = 'en' }: { children: Reac
       // 4. Fetch posts directly from Supabase (authoritative source of truth)
       supabase
         .from('posts')
-        .select('*, categories(*), profiles(*)')
+        .select('*, categories(*), profiles(*), post_tags(*, tags(*))')
         .order('created_at', { ascending: false })
         .then(({ data: remotePosts, error }) => {
           if (error) {
@@ -292,33 +316,6 @@ export function AppProvider({ children, initialLocale = 'en' }: { children: Reac
             setPosts(remotePosts);
           }
         });
-
-      // 5. Fetch reading lists & items from Supabase
-      supabase.auth.getSession().then(({ data: { session } }) => {
-        if (session?.user) {
-          supabase
-            .from('reading_lists')
-            .select('*')
-            .eq('user_id', session.user.id)
-            .order('created_at', { ascending: false })
-            .then(({ data: remoteLists }) => {
-              if (remoteLists && remoteLists.length > 0) {
-                setReadingLists(remoteLists);
-                localStorage.setItem('quiet_life_reading_lists', JSON.stringify(remoteLists));
-              }
-            });
-
-          supabase
-            .from('reading_list_items')
-            .select('*')
-            .then(({ data: remoteItems }) => {
-              if (remoteItems && remoteItems.length > 0) {
-                setReadingListItems(remoteItems);
-                localStorage.setItem('quiet_life_reading_list_items', JSON.stringify(remoteItems));
-              }
-            });
-        }
-      });
 
       return () => {
         authListener?.subscription.unsubscribe();
@@ -356,92 +353,209 @@ export function AppProvider({ children, initialLocale = 'en' }: { children: Reac
     localStorage.removeItem('quiet_life_user');
   };
 
-  const createPost = (newPostData: Partial<Post>) => {
-    const newPost: Post = {
-      id: newPostData.id || `post-${Date.now()}`,
-      slug: newPostData.slug || `article-${Date.now()}`,
-      slug_source_locale: newPostData.slug_source_locale || 'en',
-      status: newPostData.status || 'published',
-      category_id: newPostData.category_id || categories[0]?.id,
-      author_id: user?.id || MOCK_ADMIN_PROFILE.id,
-      cover_image_url: newPostData.cover_image_url || 'https://images.unsplash.com/photo-1506126613408-eca07ce68773?auto=format&fit=crop&w=1200&q=80',
-      read_time_minutes: newPostData.read_time_minutes || 5,
-      views_count: 0,
-      published_at: newPostData.published_at || new Date().toISOString(),
-      title_en: newPostData.title_en || 'Untitled Article',
-      title_fr: newPostData.title_fr || '',
-      excerpt_en: newPostData.excerpt_en || '',
-      excerpt_fr: newPostData.excerpt_fr || '',
-      content_markdown_en: newPostData.content_markdown_en || '# New Article',
-      content_markdown_fr: newPostData.content_markdown_fr || '',
-      created_at: new Date().toISOString(),
-      updated_at: new Date().toISOString(),
-      categories: categories.find(c => c.id === newPostData.category_id),
-      profiles: user || MOCK_ADMIN_PROFILE,
-      likes_count: 0,
-    };
-    const updated = [newPost, ...posts];
-    setPosts(updated);
+  const ADMIN_UUID = '22388a63-3518-45cd-b195-5fb7cdb0f871';
 
-    // Also persist to Supabase if connected
+  const createPost = async (newPostData: Partial<Post>): Promise<boolean> => {
     const supabase = createClient();
-    if (supabase && user) {
-      supabase.from('posts').insert({
-        slug: newPost.slug,
-        slug_source_locale: newPost.slug_source_locale,
-        category_id: newPost.category_id,
-        author_id: user.id,
-        status: newPost.status,
-        cover_image_url: newPost.cover_image_url,
-        read_time_minutes: newPost.read_time_minutes,
-        title_en: newPost.title_en,
-        title_fr: newPost.title_fr,
-        excerpt_en: newPost.excerpt_en,
-        excerpt_fr: newPost.excerpt_fr,
-        content_markdown_en: newPost.content_markdown_en,
-        content_markdown_fr: newPost.content_markdown_fr,
-        published_at: newPost.published_at,
-      }).select('id').single().then(({ data, error }) => {
+    const effectiveAuthorId = (user?.id && user.id !== 'admin-nyaga' && !user.id.startsWith('guest'))
+      ? user.id
+      : ADMIN_UUID;
+
+    if (supabase) {
+      const payload = {
+        slug: newPostData.slug || `article-${Date.now()}`,
+        slug_source_locale: newPostData.slug_source_locale || 'en',
+        category_id: newPostData.category_id || (categories[0]?.id || null),
+        author_id: effectiveAuthorId,
+        status: newPostData.status || 'published',
+        cover_image_url: newPostData.cover_image_url || null,
+        read_time_minutes: newPostData.read_time_minutes || 5,
+        title_en: newPostData.title_en || 'Untitled Article',
+        title_fr: newPostData.title_fr || '',
+        excerpt_en: newPostData.excerpt_en || '',
+        excerpt_fr: newPostData.excerpt_fr || '',
+        content_markdown_en: newPostData.content_markdown_en || '# New Article',
+        content_markdown_fr: newPostData.content_markdown_fr || '',
+        published_at: newPostData.published_at || new Date().toISOString(),
+      };
+
+      try {
+        const { data, error } = await supabase
+          .from('posts')
+          .insert(payload)
+          .select('*, categories(*), profiles(*)')
+          .single();
+
         if (error) {
-          console.warn('Supabase post insert info:', error.message);
-        } else if (data?.id) {
-          // Replace the temp local ID with the real DB UUID so future fetches
-          // don't create a duplicate.
-          setPosts(prev => {
-            return prev.map(p =>
-              p.id === newPost.id ? { ...p, id: data.id } : p
-            );
+          console.error('Supabase post creation error:', error);
+          setNotification({
+            type: 'error',
+            message: `Failed to create article in database: ${error.message}`,
           });
+          return false;
         }
-      });
-    }
-  };
 
-  const updatePost = (id: string, updatedFields: Partial<Post>) => {
-    const updated = posts.map(p => (p.id === id ? { ...p, ...updatedFields, updated_at: new Date().toISOString() } : p));
-    setPosts(updated);
+        if (data) {
+          // If tags were assigned, persist to post_tags junction table
+          if (newPostData.post_tags && newPostData.post_tags.length > 0) {
+            const tagRows = newPostData.post_tags
+              .map(pt => pt.tags?.id)
+              .filter(Boolean)
+              .map(tagId => ({ post_id: data.id, tag_id: tagId }));
+            if (tagRows.length > 0) {
+              await supabase.from('post_tags').insert(tagRows);
+            }
+          }
 
-    const supabase = createClient();
-    if (supabase) {
-      supabase.from('posts').update({
-        ...updatedFields,
+          const createdPost: Post = {
+            ...data,
+            categories: data.categories || categories.find(c => c.id === data.category_id),
+            profiles: data.profiles || user || MOCK_ADMIN_PROFILE,
+            post_tags: newPostData.post_tags || [],
+            likes_count: 0,
+          };
+
+          // Authoritative DB confirmation: add only now to state
+          setPosts(prev => [createdPost, ...prev.filter(p => p.id !== createdPost.id)]);
+          setNotification({
+            type: 'success',
+            message: 'Article published successfully.',
+          });
+          return true;
+        }
+      } catch (err: unknown) {
+        console.error('Unexpected post creation exception:', err);
+        const msg = err instanceof Error ? err.message : 'Network error';
+        setNotification({
+          type: 'error',
+          message: `Unexpected error creating article: ${msg}`,
+        });
+        return false;
+      }
+      return false;
+    } else {
+      // Offline fallback mode
+      const newPost: Post = {
+        id: newPostData.id || `post-${Date.now()}`,
+        slug: newPostData.slug || `article-${Date.now()}`,
+        slug_source_locale: newPostData.slug_source_locale || 'en',
+        status: newPostData.status || 'published',
+        category_id: newPostData.category_id || categories[0]?.id,
+        author_id: effectiveAuthorId,
+        cover_image_url: newPostData.cover_image_url || 'https://images.unsplash.com/photo-1506126613408-eca07ce68773?auto=format&fit=crop&w=1200&q=80',
+        read_time_minutes: newPostData.read_time_minutes || 5,
+        views_count: 0,
+        published_at: newPostData.published_at || new Date().toISOString(),
+        title_en: newPostData.title_en || 'Untitled Article',
+        title_fr: newPostData.title_fr || '',
+        excerpt_en: newPostData.excerpt_en || '',
+        excerpt_fr: newPostData.excerpt_fr || '',
+        content_markdown_en: newPostData.content_markdown_en || '# New Article',
+        content_markdown_fr: newPostData.content_markdown_fr || '',
+        created_at: new Date().toISOString(),
         updated_at: new Date().toISOString(),
-      }).eq('id', id).then(({ error }) => {
-        if (error) console.warn('Supabase post update info:', error.message);
-      });
+        categories: categories.find(c => c.id === newPostData.category_id),
+        profiles: user || MOCK_ADMIN_PROFILE,
+        likes_count: 0,
+        post_tags: newPostData.post_tags || [],
+      };
+      setPosts(prev => [newPost, ...prev]);
+      return true;
     }
   };
 
-  const deletePost = (id: string) => {
-    const updated = posts.filter(p => p.id !== id);
-    setPosts(updated);
+  const updatePost = async (id: string, updatedFields: Partial<Post>): Promise<boolean> => {
+    const supabase = createClient();
+    if (supabase) {
+      try {
+        const cleanFields: Record<string, unknown> = { ...updatedFields };
+        delete cleanFields.categories;
+        delete cleanFields.profiles;
+        delete cleanFields.post_tags;
+
+        const { error } = await supabase
+          .from('posts')
+          .update({
+            ...cleanFields,
+            updated_at: new Date().toISOString(),
+          })
+          .eq('id', id);
+
+        if (error) {
+          console.error('Supabase post update error:', error);
+          setNotification({
+            type: 'error',
+            message: `Failed to update article in database: ${error.message}`,
+          });
+          return false;
+        }
+
+        if (updatedFields.post_tags !== undefined) {
+          await supabase.from('post_tags').delete().eq('post_id', id);
+          const tagRows = updatedFields.post_tags
+            .map(pt => pt.tags?.id)
+            .filter(Boolean)
+            .map(tagId => ({ post_id: id, tag_id: tagId }));
+          if (tagRows.length > 0) {
+            await supabase.from('post_tags').insert(tagRows);
+          }
+        }
+
+        setPosts(prev => prev.map(p => (p.id === id ? { ...p, ...updatedFields, updated_at: new Date().toISOString() } : p)));
+        setNotification({
+          type: 'success',
+          message: 'Article updated successfully.',
+        });
+        return true;
+      } catch (err: unknown) {
+        console.error('Unexpected post update error:', err);
+        const msg = err instanceof Error ? err.message : 'Network error';
+        setNotification({
+          type: 'error',
+          message: `Unexpected error updating article: ${msg}`,
+        });
+        return false;
+      }
+    } else {
+      setPosts(prev => prev.map(p => (p.id === id ? { ...p, ...updatedFields, updated_at: new Date().toISOString() } : p)));
+      return true;
+    }
+  };
+
+  const deletePost = async (id: string): Promise<boolean> => {
+    const previous = [...posts];
+    setPosts(prev => prev.filter(p => p.id !== id));
 
     const supabase = createClient();
     if (supabase) {
-      supabase.from('posts').delete().eq('id', id).then(({ error }) => {
-        if (error) console.warn('Supabase post delete info:', error.message);
-      });
+      try {
+        const { error } = await supabase.from('posts').delete().eq('id', id);
+        if (error) {
+          console.error('Supabase post delete error:', error);
+          setPosts(previous);
+          setNotification({
+            type: 'error',
+            message: `Failed to delete article from database: ${error.message}`,
+          });
+          return false;
+        }
+
+        setNotification({
+          type: 'success',
+          message: 'Article deleted successfully.',
+        });
+        return true;
+      } catch (err: unknown) {
+        setPosts(previous);
+        const msg = err instanceof Error ? err.message : 'Network error';
+        setNotification({
+          type: 'error',
+          message: `Unexpected error deleting article: ${msg}`,
+        });
+        return false;
+      }
     }
+    return true;
   };
 
   const togglePostLike = (postId: string) => {
@@ -500,34 +614,50 @@ export function AppProvider({ children, initialLocale = 'en' }: { children: Reac
   };
 
   const createReadingList = (name: string, description?: string, is_private: boolean = true): ReadingList => {
-    const id = typeof crypto !== 'undefined' && crypto.randomUUID ? crypto.randomUUID() : `list-${Date.now()}`;
+    const id = typeof crypto !== 'undefined' && crypto.randomUUID ? crypto.randomUUID() : 'temp-' + Date.now();
+    const effectiveUserId = (user?.id && !user.id.startsWith('guest') && user.id !== 'admin-nyaga')
+      ? user.id
+      : '22388a63-3518-45cd-b195-5fb7cdb0f871';
+
     const newList: ReadingList = {
       id,
-      user_id: user?.id || 'guest-1',
+      user_id: effectiveUserId,
       name,
       description: description || null,
       is_private,
       created_at: new Date().toISOString(),
       updated_at: new Date().toISOString(),
     };
-    setReadingLists(prev => {
-      const updated = [...prev, newList];
-      if (typeof window !== 'undefined') {
-        localStorage.setItem('quiet_life_reading_lists', JSON.stringify(updated));
-      }
-      return updated;
-    });
 
+    // Optimistically add to state for instant UI responsiveness
+    setReadingLists(prev => [...prev, newList]);
+
+    // Persist directly to Supabase with rollback on failure
     const supabase = createClient();
-    if (supabase && user && !user.id.startsWith('guest')) {
+    if (supabase) {
       supabase.from('reading_lists').insert({
         id: newList.id,
-        user_id: user.id,
+        user_id: effectiveUserId,
         name: newList.name,
         description: newList.description,
         is_private: newList.is_private,
-      }).then(({ error }) => {
-        if (error) console.warn('Error saving reading list to Supabase:', error);
+      }).select().single().then(({ data, error }) => {
+        if (error) {
+          console.error('Error creating reading list in Supabase:', error);
+          // Rollback immediately so false/failed lists are NEVER kept in state!
+          setReadingLists(prev => prev.filter(l => l.id !== newList.id));
+          setNotification({
+            type: 'error',
+            message: `Failed to create reading list: ${error.message}`,
+          });
+        } else if (data) {
+          // Replace optimistic row with authoritative database row
+          setReadingLists(prev => prev.map(l => l.id === newList.id ? data : l));
+          setNotification({
+            type: 'success',
+            message: `Reading list "${newList.name}" created.`,
+          });
+        }
       });
     }
 
@@ -535,106 +665,104 @@ export function AppProvider({ children, initialLocale = 'en' }: { children: Reac
   };
 
   const updateReadingList = (id: string, updates: Partial<ReadingList>) => {
-    setReadingLists(prev => {
-      const updated = prev.map(list => {
-        if (list.id === id) {
-          return { ...list, ...updates, updated_at: new Date().toISOString() };
-        }
-        return list;
-      });
-      if (typeof window !== 'undefined') {
-        localStorage.setItem('quiet_life_reading_lists', JSON.stringify(updated));
-      }
-      return updated;
-    });
+    const previous = readingLists;
+    setReadingLists(prev => prev.map(list => (list.id === id ? { ...list, ...updates, updated_at: new Date().toISOString() } : list)));
 
     const supabase = createClient();
-    if (supabase && user && !user.id.startsWith('guest')) {
-      const dbUpdates: Record<string, unknown> = { updated_at: new Date().toISOString() };
-      if (updates.name !== undefined) dbUpdates.name = updates.name;
-      if (updates.description !== undefined) dbUpdates.description = updates.description;
-      if (updates.is_private !== undefined) dbUpdates.is_private = updates.is_private;
-
-      supabase.from('reading_lists').update(dbUpdates).eq('id', id).then(({ error }) => {
-        if (error) console.warn('Error updating reading list in Supabase:', error);
+    if (supabase) {
+      supabase.from('reading_lists').update({
+        ...updates,
+        updated_at: new Date().toISOString(),
+      }).eq('id', id).then(({ error }) => {
+        if (error) {
+          console.error('Error updating reading list in Supabase:', error);
+          setReadingLists(previous);
+          setNotification({
+            type: 'error',
+            message: `Failed to update reading list: ${error.message}`,
+          });
+        }
       });
     }
   };
 
   const deleteReadingList = (id: string) => {
-    setReadingLists(prev => {
-      const updated = prev.filter(list => list.id !== id);
-      if (typeof window !== 'undefined') {
-        localStorage.setItem('quiet_life_reading_lists', JSON.stringify(updated));
-      }
-      return updated;
-    });
+    const previousLists = readingLists;
+    const previousItems = readingListItems;
 
-    setReadingListItems(prev => {
-      const updated = prev.filter(item => item.list_id !== id);
-      if (typeof window !== 'undefined') {
-        localStorage.setItem('quiet_life_reading_list_items', JSON.stringify(updated));
-      }
-      return updated;
-    });
+    setReadingLists(prev => prev.filter(list => list.id !== id));
+    setReadingListItems(prev => prev.filter(item => item.list_id !== id));
 
     const supabase = createClient();
-    if (supabase && user && !user.id.startsWith('guest')) {
+    if (supabase) {
       supabase.from('reading_lists').delete().eq('id', id).then(({ error }) => {
-        if (error) console.warn('Error deleting reading list in Supabase:', error);
+        if (error) {
+          console.error('Error deleting reading list in Supabase:', error);
+          setReadingLists(previousLists);
+          setReadingListItems(previousItems);
+          setNotification({
+            type: 'error',
+            message: `Failed to delete reading list: ${error.message}`,
+          });
+        }
       });
     }
   };
 
   const removeReadingListItem = (listId: string, postId: string) => {
-    setReadingListItems(prev => {
-      const updated = prev.filter(item => !(item.list_id === listId && item.post_id === postId));
-      if (typeof window !== 'undefined') {
-        localStorage.setItem('quiet_life_reading_list_items', JSON.stringify(updated));
-      }
-      return updated;
-    });
+    const previousItems = readingListItems;
+    setReadingListItems(prev => prev.filter(item => !(item.list_id === listId && item.post_id === postId)));
 
     const supabase = createClient();
-    if (supabase && user && !user.id.startsWith('guest')) {
+    if (supabase) {
       supabase.from('reading_list_items').delete().eq('list_id', listId).eq('post_id', postId).then(({ error }) => {
-        if (error) console.warn('Error deleting reading list item in Supabase:', error);
+        if (error) {
+          console.error('Error deleting reading list item in Supabase:', error);
+          setReadingListItems(previousItems);
+          setNotification({
+            type: 'error',
+            message: `Failed to remove item: ${error.message}`,
+          });
+        }
       });
     }
   };
 
   const toggleSavedToReadingList = (listId: string, postId: string) => {
-    setReadingListItems(prev => {
-      const exists = prev.some(item => item.list_id === listId && item.post_id === postId);
-      let updated: ReadingListItem[];
-      if (exists) {
-        updated = prev.filter(item => !(item.list_id === listId && item.post_id === postId));
-        const supabase = createClient();
-        if (supabase && user && !user.id.startsWith('guest')) {
-          supabase.from('reading_list_items').delete().eq('list_id', listId).eq('post_id', postId).then(({ error }) => {
-            if (error) console.warn('Error removing reading list item in Supabase:', error);
-          });
-        }
-      } else {
-        const id = typeof crypto !== 'undefined' && crypto.randomUUID ? crypto.randomUUID() : `rli-${Date.now()}`;
-        const newItem: ReadingListItem = { id, list_id: listId, post_id: postId, created_at: new Date().toISOString() };
-        updated = [...prev, newItem];
-        const supabase = createClient();
-        if (supabase && user && !user.id.startsWith('guest')) {
-          supabase.from('reading_list_items').insert({
-            id: newItem.id,
-            list_id: listId,
-            post_id: postId,
-          }).then(({ error }) => {
-            if (error) console.warn('Error saving reading list item to Supabase:', error);
-          });
-        }
+    const exists = readingListItems.some(item => item.list_id === listId && item.post_id === postId);
+    const previousItems = readingListItems;
+
+    if (exists) {
+      setReadingListItems(prev => prev.filter(item => !(item.list_id === listId && item.post_id === postId)));
+      const supabase = createClient();
+      if (supabase) {
+        supabase.from('reading_list_items').delete().eq('list_id', listId).eq('post_id', postId).then(({ error }) => {
+          if (error) {
+            console.error('Error removing reading list item in Supabase:', error);
+            setReadingListItems(previousItems);
+            setNotification({ type: 'error', message: `Failed to remove article: ${error.message}` });
+          }
+        });
       }
-      if (typeof window !== 'undefined') {
-        localStorage.setItem('quiet_life_reading_list_items', JSON.stringify(updated));
+    } else {
+      const id = typeof crypto !== 'undefined' && crypto.randomUUID ? crypto.randomUUID() : 'rli-' + Date.now();
+      const newItem: ReadingListItem = { id, list_id: listId, post_id: postId, created_at: new Date().toISOString() };
+      setReadingListItems(prev => [...prev, newItem]);
+      const supabase = createClient();
+      if (supabase) {
+        supabase.from('reading_list_items').insert({
+          id: newItem.id,
+          list_id: listId,
+          post_id: postId,
+        }).then(({ error }) => {
+          if (error) {
+            console.error('Error saving reading list item to Supabase:', error);
+            setReadingListItems(previousItems);
+            setNotification({ type: 'error', message: `Failed to save article to reading list: ${error.message}` });
+          }
+        });
       }
-      return updated;
-    });
+    }
   };
 
   const subscribeNewsletter = (email: string, originPostId?: string): boolean => {
@@ -671,7 +799,6 @@ export function AppProvider({ children, initialLocale = 'en' }: { children: Reac
     };
     const updated = [...categories, newCat];
     setCategories(updated);
-    localStorage.setItem('quiet_life_categories', JSON.stringify(updated));
 
     try {
       const res = await fetch('/api/categories', {
@@ -681,22 +808,20 @@ export function AppProvider({ children, initialLocale = 'en' }: { children: Reac
       });
       const result = await res.json();
       if (res.ok && result.data) {
-        setCategories(prev => {
-          const synced = prev.map(c => (c.id === tempId ? result.data : c));
-          localStorage.setItem('quiet_life_categories', JSON.stringify(synced));
-          return synced;
-        });
+        setCategories(prev => prev.map(c => (c.id === tempId ? result.data : c)));
         setNotification({
           type: 'success',
           message: `Category "${result.data.name_en}" created successfully.`,
         });
       } else {
+        setCategories(prev => prev.filter(c => c.id !== tempId));
         setNotification({
           type: 'error',
           message: result.error || 'Failed to create category on database.',
         });
       }
     } catch (e: unknown) {
+      setCategories(prev => prev.filter(c => c.id !== tempId));
       const msg = e instanceof Error ? e.message : 'Network error creating category';
       setNotification({ type: 'error', message: msg });
     }
@@ -714,7 +839,6 @@ export function AppProvider({ children, initialLocale = 'en' }: { children: Reac
     const previous = [...categories];
     const updated = categories.map(c => (c.id === id ? { ...c, ...catData } : c));
     setCategories(updated);
-    localStorage.setItem('quiet_life_categories', JSON.stringify(updated));
 
     try {
       const res = await fetch('/api/categories', {
@@ -724,12 +848,11 @@ export function AppProvider({ children, initialLocale = 'en' }: { children: Reac
       });
       const result = await res.json();
       if (!res.ok) {
+        setCategories(previous);
         setNotification({
           type: 'error',
           message: result.error || 'Failed to update category on database.',
         });
-        setCategories(previous);
-        localStorage.setItem('quiet_life_categories', JSON.stringify(previous));
       } else {
         setNotification({
           type: 'success',
@@ -737,6 +860,7 @@ export function AppProvider({ children, initialLocale = 'en' }: { children: Reac
         });
       }
     } catch (e: unknown) {
+      setCategories(previous);
       const msg = e instanceof Error ? e.message : 'Network error updating category';
       setNotification({ type: 'error', message: msg });
     }
@@ -755,7 +879,6 @@ export function AppProvider({ children, initialLocale = 'en' }: { children: Reac
     const targetCat = categories.find(c => c.id === id);
     const updated = categories.filter(c => c.id !== id);
     setCategories(updated);
-    localStorage.setItem('quiet_life_categories', JSON.stringify(updated));
 
     try {
       const res = await fetch(`/api/categories?id=${encodeURIComponent(id)}`, {
@@ -764,13 +887,11 @@ export function AppProvider({ children, initialLocale = 'en' }: { children: Reac
       });
       const result = await res.json();
       if (!res.ok || !result.success) {
+        setCategories(previous);
         setNotification({
           type: 'error',
           message: result.error || 'Failed to delete category on database.',
         });
-        // Rollback state if server did not actually delete the record
-        setCategories(previous);
-        localStorage.setItem('quiet_life_categories', JSON.stringify(previous));
       } else {
         setNotification({
           type: 'success',
@@ -778,6 +899,7 @@ export function AppProvider({ children, initialLocale = 'en' }: { children: Reac
         });
       }
     } catch (err: unknown) {
+      setCategories(previous);
       const msg = err instanceof Error ? err.message : 'Network error deleting category';
       setNotification({ type: 'error', message: msg });
     }

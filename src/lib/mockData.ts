@@ -62,7 +62,7 @@ export const INITIAL_TAGS: Tag[] = [
 ];
 
 export const MOCK_ADMIN_PROFILE: Profile = {
-  id: 'admin-nyaga',
+  id: '22388a63-3518-45cd-b195-5fb7cdb0f871',
   full_name: 'Andre Roy Nyaga',
   avatar_url: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=400&q=80',
   role: 'admin',

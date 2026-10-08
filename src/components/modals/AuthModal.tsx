@@ -123,8 +123,11 @@ export function AuthModal({ open, onClose, initialMode = 'signin' }: AuthModalPr
 
     // Local fallback
     const fallbackRole = email.trim().toLowerCase() === 'nyagaandreroy@gmail.com' ? 'admin' : 'user';
+    const fallbackId = fallbackRole === 'admin'
+      ? '22388a63-3518-45cd-b195-5fb7cdb0f871'
+      : (typeof crypto !== 'undefined' && crypto.randomUUID ? crypto.randomUUID() : 'b0000000-0000-0000-0000-' + Date.now().toString().padStart(12, '0'));
     setUser({
-      id: `user-${Date.now()}`,
+      id: fallbackId,
       full_name: fullName || 'Mindful Reader',
       avatar_url: avatarUrl,
       role: fallbackRole,
@@ -154,10 +157,10 @@ export function AuthModal({ open, onClose, initialMode = 'signin' }: AuthModalPr
         });
 
         if (error) {
-          // If remote DB hasn't been migrated yet, allow admin testing locally
+          // If remote DB hasn't been migrated yet or email provider is disabled, allow admin testing locally
           if (email.trim().toLowerCase() === 'nyagaandreroy@gmail.com' && password === '123456') {
             setUser({
-              id: 'admin-nyaga',
+              id: '22388a63-3518-45cd-b195-5fb7cdb0f871',
               full_name: 'Andre Roy Nyaga',
               avatar_url: avatarUrl,
               role: 'admin',
@@ -207,7 +210,7 @@ export function AuthModal({ open, onClose, initialMode = 'signin' }: AuthModalPr
     // Local fallback
     if (email.trim().toLowerCase() === 'nyagaandreroy@gmail.com' && password === '123456') {
       setUser({
-        id: 'admin-nyaga',
+        id: '22388a63-3518-45cd-b195-5fb7cdb0f871',
         full_name: 'Andre Roy Nyaga',
         avatar_url: avatarUrl,
         role: 'admin',
