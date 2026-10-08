@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { Dialog, DialogContent, Typography, TextField, Button, IconButton, Chip, Box, Avatar, LinearProgress, CircularProgress } from '@mui/material';
+import { Dialog, DialogContent, Typography, TextField, Button, IconButton, Chip, Box, LinearProgress, CircularProgress } from '@mui/material';
 import CloseIcon from '@mui/icons-material/Close';
 import CheckCircleIcon from '@mui/icons-material/CheckCircle';
 import ArrowBackIcon from '@mui/icons-material/ArrowBack';
@@ -10,13 +10,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { useApp } from '@/lib/store';
 import { getLocalizedField, DICTIONARY } from '@/lib/i18n';
 import { createClient } from '@/lib/supabase/client';
-
-const AVATAR_PRESETS = [
-  'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=300&q=80',
-  'https://images.unsplash.com/photo-1517841905240-472988babdf9?auto=format&fit=crop&w=300&q=80',
-  'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&w=300&q=80',
-  'https://images.unsplash.com/photo-1494790108377-be9c29b29330?auto=format&fit=crop&w=300&q=80',
-];
+import { AvatarUploader } from '@/components/auth/AvatarUploader';
 
 interface AuthModalProps {
   open: boolean;
@@ -36,7 +30,7 @@ export function AuthModal({ open, onClose, initialMode = 'signin' }: AuthModalPr
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
-  const [avatarUrl, setAvatarUrl] = useState(AVATAR_PRESETS[0]);
+  const [avatarUrl, setAvatarUrl] = useState('');
   const [selectedCategoryIds, setSelectedCategoryIds] = useState<string[]>([]);
   const [errorMsg, setErrorMsg] = useState('');
   const [loading, setLoading] = useState(false);
@@ -90,8 +84,8 @@ export function AuthModal({ open, onClose, initialMode = 'signin' }: AuthModalPr
           password,
           options: {
             data: {
-              full_name: fullName || 'Mindful Reader',
-              avatar_url: avatarUrl,
+              full_name: fullName.trim() || 'Mindful Reader',
+              avatar_url: avatarUrl || null,
             },
           },
         });
@@ -106,8 +100,8 @@ export function AuthModal({ open, onClose, initialMode = 'signin' }: AuthModalPr
           const userRole = email.trim().toLowerCase() === 'nyagaandreroy@gmail.com' ? 'admin' : 'user';
           setUser({
             id: data.user.id,
-            full_name: fullName || 'Mindful Reader',
-            avatar_url: avatarUrl,
+            full_name: fullName.trim() || 'Mindful Reader',
+            avatar_url: avatarUrl || null,
             role: userRole,
             onboarding_completed: true,
             created_at: data.user.created_at,
@@ -116,20 +110,24 @@ export function AuthModal({ open, onClose, initialMode = 'signin' }: AuthModalPr
           handleSuccessAuth(userRole);
           return;
         }
-      } catch (err: any) {
+      } catch (err: unknown) {
         console.warn('Signup error:', err);
+        const msg = err instanceof Error ? err.message : 'Error completing registration';
+        setErrorMsg(msg);
+        setLoading(false);
+        return;
       }
     }
 
-    // Local fallback
+    // Local fallback for offline mode
     const fallbackRole = email.trim().toLowerCase() === 'nyagaandreroy@gmail.com' ? 'admin' : 'user';
     const fallbackId = fallbackRole === 'admin'
       ? '22388a63-3518-45cd-b195-5fb7cdb0f871'
       : (typeof crypto !== 'undefined' && crypto.randomUUID ? crypto.randomUUID() : 'b0000000-0000-0000-0000-' + Date.now().toString().padStart(12, '0'));
     setUser({
       id: fallbackId,
-      full_name: fullName || 'Mindful Reader',
-      avatar_url: avatarUrl,
+      full_name: fullName.trim() || 'Mindful Reader',
+      avatar_url: avatarUrl || null,
       role: fallbackRole,
       onboarding_completed: true,
       created_at: new Date().toISOString(),
@@ -202,7 +200,7 @@ export function AuthModal({ open, onClose, initialMode = 'signin' }: AuthModalPr
           handleSuccessAuth(userRole);
           return;
         }
-      } catch (err: any) {
+      } catch (err: unknown) {
         console.warn('Login error:', err);
       }
     }
@@ -492,47 +490,58 @@ export function AuthModal({ open, onClose, initialMode = 'signin' }: AuthModalPr
               {step === 2 && (
                 <>
                   <Typography variant="h5" className="font-serif font-bold text-earth-900 mb-1">
-                    {t.onboarding.step2Title}
+                    {locale === 'fr' ? 'Photo de profil' : 'Profile Photo'}
                   </Typography>
-                  <Typography variant="body2" className="text-earth-600 mb-5">
-                    {t.onboarding.step2Subtitle}
+                  <Typography variant="body2" className="text-earth-600 mb-3">
+                    {locale === 'fr'
+                      ? 'Téléversez une photo de profil (format 1:1). Elle sera automatiquement recadrée et compressée.'
+                      : 'Upload your profile photo. It will be cropped to a 1:1 square and compressed to WebP.'}
                   </Typography>
 
-                  <div className="grid grid-cols-4 gap-4 mb-6 py-2">
-                    {AVATAR_PRESETS.map((preset, idx) => (
-                      <Avatar
-                        key={idx}
-                        src={preset}
-                        onClick={() => setAvatarUrl(preset)}
-                        sx={{
-                          width: 68,
-                          height: 68,
-                          cursor: 'pointer',
-                          border: avatarUrl === preset ? '3px solid #C88A79' : '2px solid transparent',
-                          boxShadow: avatarUrl === preset ? '0 4px 12px rgba(200, 138, 121, 0.35)' : 'none',
-                          transform: avatarUrl === preset ? 'scale(1.08)' : 'scale(1)',
-                          transition: 'all 0.2s ease',
-                          mx: 'auto',
-                        }}
-                      />
-                    ))}
+                  <AvatarUploader
+                    value={avatarUrl}
+                    onChange={url => setAvatarUrl(url)}
+                    label={locale === 'fr' ? 'Photo de profil' : 'Profile Photo'}
+                    helperText={
+                      locale === 'fr'
+                        ? 'Optionnel. Recadrage carré 1:1 et compression automatique WebP.'
+                        : 'Optional. 1:1 square crop with automatic WebP compression.'
+                    }
+                  />
+
+                  <div className="flex items-center gap-3 mt-5">
+                    <Button
+                      variant="outlined"
+                      size="large"
+                      onClick={() => setStep(1)}
+                      sx={{
+                        color: '#5C4438',
+                        borderColor: '#E8E2DA',
+                        textTransform: 'none',
+                        fontWeight: 600,
+                        borderRadius: 3,
+                        px: 3,
+                        py: 1.3,
+                      }}
+                    >
+                      {locale === 'fr' ? 'Retour' : 'Back'}
+                    </Button>
+                    <Button
+                      fullWidth
+                      variant="contained"
+                      size="large"
+                      onClick={() => setStep(3)}
+                      sx={{
+                        bgcolor: '#C88A79',
+                        '&:hover': { bgcolor: '#A66E5E' },
+                        py: 1.4,
+                        borderRadius: 3,
+                        fontWeight: 700,
+                      }}
+                    >
+                      {t.onboarding.next}
+                    </Button>
                   </div>
-
-                  <Button
-                    fullWidth
-                    variant="contained"
-                    size="large"
-                    onClick={() => setStep(3)}
-                    sx={{
-                      bgcolor: '#C88A79',
-                      '&:hover': { bgcolor: '#A66E5E' },
-                      py: 1.4,
-                      borderRadius: 3,
-                      fontWeight: 700,
-                    }}
-                  >
-                    {t.onboarding.next}
-                  </Button>
                 </>
               )}
 
