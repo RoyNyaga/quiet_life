@@ -140,20 +140,8 @@ export function AppProvider({ children, initialLocale = 'en' }: { children: Reac
       const savedLocale = localStorage.getItem('quiet_life_locale') as Locale;
       if (savedLocale) setLocaleState(savedLocale);
 
-      // Clean out legacy mock posts if found in localStorage
-      const savedPosts = localStorage.getItem('quiet_life_posts');
-      if (savedPosts) {
-        try {
-          const parsed = JSON.parse(savedPosts);
-          if (Array.isArray(parsed)) {
-            const cleaned = parsed.filter(p => !['post-1', 'post-2', 'post-3'].includes(p.id));
-            setPosts(cleaned);
-            localStorage.setItem('quiet_life_posts', JSON.stringify(cleaned));
-          }
-        } catch (e) {
-          console.warn('Error reading saved posts:', e);
-        }
-      }
+      // Clean out any legacy cached posts in localStorage
+      localStorage.removeItem('quiet_life_posts');
 
       const savedCats = localStorage.getItem('quiet_life_categories');
       if (savedCats) {
@@ -290,23 +278,18 @@ export function AppProvider({ children, initialLocale = 'en' }: { children: Reac
         })
         .catch(err => console.warn('Error fetching /api/tags:', err));
 
-      // 4. Fetch posts from Supabase
+      // 4. Fetch posts directly from Supabase (authoritative source of truth)
       supabase
         .from('posts')
         .select('*, categories(*), profiles(*)')
         .order('created_at', { ascending: false })
-        .then(({ data: remotePosts }) => {
+        .then(({ data: remotePosts, error }) => {
+          if (error) {
+            console.warn('Error fetching posts from Supabase:', error.message);
+            return;
+          }
           if (remotePosts) {
-            // Merge: keep any local-only posts (temp IDs starting with 'post-') that
-            // haven't been persisted to the DB yet, then prepend remote posts.
-            setPosts(prev => {
-              const localOnly = prev.filter(
-                p => p.id.startsWith('post-') && !remotePosts.some(r => r.id === p.id)
-              );
-              const merged = [...localOnly, ...remotePosts];
-              localStorage.setItem('quiet_life_posts', JSON.stringify(merged));
-              return merged;
-            });
+            setPosts(remotePosts);
           }
         });
 
@@ -399,7 +382,6 @@ export function AppProvider({ children, initialLocale = 'en' }: { children: Reac
     };
     const updated = [newPost, ...posts];
     setPosts(updated);
-    localStorage.setItem('quiet_life_posts', JSON.stringify(updated));
 
     // Also persist to Supabase if connected
     const supabase = createClient();
@@ -426,11 +408,9 @@ export function AppProvider({ children, initialLocale = 'en' }: { children: Reac
           // Replace the temp local ID with the real DB UUID so future fetches
           // don't create a duplicate.
           setPosts(prev => {
-            const updated = prev.map(p =>
+            return prev.map(p =>
               p.id === newPost.id ? { ...p, id: data.id } : p
             );
-            localStorage.setItem('quiet_life_posts', JSON.stringify(updated));
-            return updated;
           });
         }
       });
@@ -440,7 +420,6 @@ export function AppProvider({ children, initialLocale = 'en' }: { children: Reac
   const updatePost = (id: string, updatedFields: Partial<Post>) => {
     const updated = posts.map(p => (p.id === id ? { ...p, ...updatedFields, updated_at: new Date().toISOString() } : p));
     setPosts(updated);
-    localStorage.setItem('quiet_life_posts', JSON.stringify(updated));
 
     const supabase = createClient();
     if (supabase) {
@@ -456,7 +435,6 @@ export function AppProvider({ children, initialLocale = 'en' }: { children: Reac
   const deletePost = (id: string) => {
     const updated = posts.filter(p => p.id !== id);
     setPosts(updated);
-    localStorage.setItem('quiet_life_posts', JSON.stringify(updated));
 
     const supabase = createClient();
     if (supabase) {
