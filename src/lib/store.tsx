@@ -36,7 +36,10 @@ interface AppContextType {
   incrementViews: (postId: string) => void;
   addComment: (comment: Partial<Comment>) => void;
   toggleCommentLike: (commentId: string) => void;
-  createReadingList: (name: string, description?: string) => ReadingList;
+  createReadingList: (name: string, description?: string, is_private?: boolean) => ReadingList;
+  updateReadingList: (id: string, updates: Partial<ReadingList>) => void;
+  deleteReadingList: (id: string) => void;
+  removeReadingListItem: (listId: string, postId: string) => void;
   toggleSavedToReadingList: (listId: string, postId: string) => void;
   subscribeNewsletter: (email: string, originPostId?: string) => boolean;
   createCategory: (cat: Partial<Category>) => void;
@@ -179,6 +182,30 @@ export function AppProvider({ children, initialLocale = 'en' }: { children: Reac
           console.warn('Error reading saved user:', e);
         }
       }
+      // Load saved reading lists & items
+      const savedLists = localStorage.getItem('quiet_life_reading_lists');
+      if (savedLists) {
+        try {
+          const parsed = JSON.parse(savedLists);
+          if (Array.isArray(parsed) && parsed.length > 0) {
+            setReadingLists(parsed);
+          }
+        } catch (e) {
+          console.warn('Error reading saved reading lists:', e);
+        }
+      }
+
+      const savedListItems = localStorage.getItem('quiet_life_reading_list_items');
+      if (savedListItems) {
+        try {
+          const parsed = JSON.parse(savedListItems);
+          if (Array.isArray(parsed) && parsed.length > 0) {
+            setReadingListItems(parsed);
+          }
+        } catch (e) {
+          console.warn('Error reading saved reading list items:', e);
+        }
+      }
     } catch (e) {
       console.warn('LocalStorage error:', e);
     } finally {
@@ -282,6 +309,33 @@ export function AppProvider({ children, initialLocale = 'en' }: { children: Reac
             });
           }
         });
+
+      // 5. Fetch reading lists & items from Supabase
+      supabase.auth.getSession().then(({ data: { session } }) => {
+        if (session?.user) {
+          supabase
+            .from('reading_lists')
+            .select('*')
+            .eq('user_id', session.user.id)
+            .order('created_at', { ascending: false })
+            .then(({ data: remoteLists }) => {
+              if (remoteLists && remoteLists.length > 0) {
+                setReadingLists(remoteLists);
+                localStorage.setItem('quiet_life_reading_lists', JSON.stringify(remoteLists));
+              }
+            });
+
+          supabase
+            .from('reading_list_items')
+            .select('*')
+            .then(({ data: remoteItems }) => {
+              if (remoteItems && remoteItems.length > 0) {
+                setReadingListItems(remoteItems);
+                localStorage.setItem('quiet_life_reading_list_items', JSON.stringify(remoteItems));
+              }
+            });
+        }
+      });
 
       return () => {
         authListener?.subscription.unsubscribe();
@@ -467,28 +521,141 @@ export function AppProvider({ children, initialLocale = 'en' }: { children: Reac
     );
   };
 
-  const createReadingList = (name: string, description?: string): ReadingList => {
+  const createReadingList = (name: string, description?: string, is_private: boolean = true): ReadingList => {
+    const id = typeof crypto !== 'undefined' && crypto.randomUUID ? crypto.randomUUID() : `list-${Date.now()}`;
     const newList: ReadingList = {
-      id: `list-${Date.now()}`,
+      id,
       user_id: user?.id || 'guest-1',
       name,
-      description,
-      is_private: true,
+      description: description || null,
+      is_private,
       created_at: new Date().toISOString(),
       updated_at: new Date().toISOString(),
     };
-    setReadingLists(prev => [...prev, newList]);
+    setReadingLists(prev => {
+      const updated = [...prev, newList];
+      if (typeof window !== 'undefined') {
+        localStorage.setItem('quiet_life_reading_lists', JSON.stringify(updated));
+      }
+      return updated;
+    });
+
+    const supabase = createClient();
+    if (supabase && user && !user.id.startsWith('guest')) {
+      supabase.from('reading_lists').insert({
+        id: newList.id,
+        user_id: user.id,
+        name: newList.name,
+        description: newList.description,
+        is_private: newList.is_private,
+      }).then(({ error }) => {
+        if (error) console.warn('Error saving reading list to Supabase:', error);
+      });
+    }
+
     return newList;
+  };
+
+  const updateReadingList = (id: string, updates: Partial<ReadingList>) => {
+    setReadingLists(prev => {
+      const updated = prev.map(list => {
+        if (list.id === id) {
+          return { ...list, ...updates, updated_at: new Date().toISOString() };
+        }
+        return list;
+      });
+      if (typeof window !== 'undefined') {
+        localStorage.setItem('quiet_life_reading_lists', JSON.stringify(updated));
+      }
+      return updated;
+    });
+
+    const supabase = createClient();
+    if (supabase && user && !user.id.startsWith('guest')) {
+      const dbUpdates: Record<string, unknown> = { updated_at: new Date().toISOString() };
+      if (updates.name !== undefined) dbUpdates.name = updates.name;
+      if (updates.description !== undefined) dbUpdates.description = updates.description;
+      if (updates.is_private !== undefined) dbUpdates.is_private = updates.is_private;
+
+      supabase.from('reading_lists').update(dbUpdates).eq('id', id).then(({ error }) => {
+        if (error) console.warn('Error updating reading list in Supabase:', error);
+      });
+    }
+  };
+
+  const deleteReadingList = (id: string) => {
+    setReadingLists(prev => {
+      const updated = prev.filter(list => list.id !== id);
+      if (typeof window !== 'undefined') {
+        localStorage.setItem('quiet_life_reading_lists', JSON.stringify(updated));
+      }
+      return updated;
+    });
+
+    setReadingListItems(prev => {
+      const updated = prev.filter(item => item.list_id !== id);
+      if (typeof window !== 'undefined') {
+        localStorage.setItem('quiet_life_reading_list_items', JSON.stringify(updated));
+      }
+      return updated;
+    });
+
+    const supabase = createClient();
+    if (supabase && user && !user.id.startsWith('guest')) {
+      supabase.from('reading_lists').delete().eq('id', id).then(({ error }) => {
+        if (error) console.warn('Error deleting reading list in Supabase:', error);
+      });
+    }
+  };
+
+  const removeReadingListItem = (listId: string, postId: string) => {
+    setReadingListItems(prev => {
+      const updated = prev.filter(item => !(item.list_id === listId && item.post_id === postId));
+      if (typeof window !== 'undefined') {
+        localStorage.setItem('quiet_life_reading_list_items', JSON.stringify(updated));
+      }
+      return updated;
+    });
+
+    const supabase = createClient();
+    if (supabase && user && !user.id.startsWith('guest')) {
+      supabase.from('reading_list_items').delete().eq('list_id', listId).eq('post_id', postId).then(({ error }) => {
+        if (error) console.warn('Error deleting reading list item in Supabase:', error);
+      });
+    }
   };
 
   const toggleSavedToReadingList = (listId: string, postId: string) => {
     setReadingListItems(prev => {
       const exists = prev.some(item => item.list_id === listId && item.post_id === postId);
+      let updated: ReadingListItem[];
       if (exists) {
-        return prev.filter(item => !(item.list_id === listId && item.post_id === postId));
+        updated = prev.filter(item => !(item.list_id === listId && item.post_id === postId));
+        const supabase = createClient();
+        if (supabase && user && !user.id.startsWith('guest')) {
+          supabase.from('reading_list_items').delete().eq('list_id', listId).eq('post_id', postId).then(({ error }) => {
+            if (error) console.warn('Error removing reading list item in Supabase:', error);
+          });
+        }
       } else {
-        return [...prev, { id: `rli-${Date.now()}`, list_id: listId, post_id: postId, created_at: new Date().toISOString() }];
+        const id = typeof crypto !== 'undefined' && crypto.randomUUID ? crypto.randomUUID() : `rli-${Date.now()}`;
+        const newItem: ReadingListItem = { id, list_id: listId, post_id: postId, created_at: new Date().toISOString() };
+        updated = [...prev, newItem];
+        const supabase = createClient();
+        if (supabase && user && !user.id.startsWith('guest')) {
+          supabase.from('reading_list_items').insert({
+            id: newItem.id,
+            list_id: listId,
+            post_id: postId,
+          }).then(({ error }) => {
+            if (error) console.warn('Error saving reading list item to Supabase:', error);
+          });
+        }
       }
+      if (typeof window !== 'undefined') {
+        localStorage.setItem('quiet_life_reading_list_items', JSON.stringify(updated));
+      }
+      return updated;
     });
   };
 
@@ -759,7 +926,19 @@ export function AppProvider({ children, initialLocale = 'en' }: { children: Reac
     if (!user) return;
     const updated = { ...user, ...profileData, updated_at: new Date().toISOString() };
     setUser(updated);
-    localStorage.setItem('quiet_life_user', JSON.stringify(updated));
+    if (typeof window !== 'undefined') {
+      localStorage.setItem('quiet_life_user', JSON.stringify(updated));
+    }
+    const supabase = createClient();
+    if (supabase && user.id && !user.id.startsWith('guest')) {
+      const dbUpdates: Record<string, unknown> = { updated_at: updated.updated_at };
+      if (profileData.full_name !== undefined) dbUpdates.full_name = profileData.full_name;
+      if (profileData.avatar_url !== undefined) dbUpdates.avatar_url = profileData.avatar_url;
+
+      supabase.from('profiles').update(dbUpdates).eq('id', user.id).then(({ error }) => {
+        if (error) console.warn('Error updating profile in Supabase:', error);
+      });
+    }
   };
 
   return (
@@ -789,6 +968,9 @@ export function AppProvider({ children, initialLocale = 'en' }: { children: Reac
         addComment,
         toggleCommentLike,
         createReadingList,
+        updateReadingList,
+        deleteReadingList,
+        removeReadingListItem,
         toggleSavedToReadingList,
         subscribeNewsletter,
         createCategory,
