@@ -138,61 +138,150 @@ export function ImageUploader({
 
       {tabIndex === 0 ? (
         value ? (
-          /* Preview of selected cover image */
-          <div className="relative group rounded-2xl overflow-hidden border border-cream-200 bg-earth-900 shadow-sm">
-            <div className="relative aspect-video w-full overflow-hidden bg-earth-950">
-              <img
-                src={value}
-                alt="Cover Preview"
-                className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-102"
-              />
+          /* Preview of selected cover image with always-visible controls */
+          <div className="space-y-3">
+            <div className="relative group rounded-2xl overflow-hidden border border-cream-200 bg-earth-900 shadow-sm">
+              <div className={`relative ${aspectRatio === '1:1' ? 'aspect-square max-w-[280px] mx-auto' : 'aspect-video w-full'} overflow-hidden bg-earth-950`}>
+                <img
+                  src={value}
+                  alt="Cover Preview"
+                  className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-102"
+                />
 
-              {/* Action Overlays */}
-              <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-3 backdrop-blur-xs">
+                {/* Floating Quick Action Badges (Always visible on top-right) */}
+                <div className="absolute top-3 right-3 flex items-center gap-2 z-10">
+                  <Button
+                    variant="contained"
+                    size="small"
+                    startIcon={<CloudUploadIcon />}
+                    onClick={() => fileInputRef.current?.click()}
+                    sx={{
+                      bgcolor: 'rgba(200, 138, 121, 0.92)',
+                      backdropFilter: 'blur(6px)',
+                      color: '#FFFFFF',
+                      '&:hover': { bgcolor: '#A66E5E' },
+                      fontWeight: 600,
+                      fontSize: '0.75rem',
+                      textTransform: 'none',
+                      borderRadius: '8px',
+                      boxShadow: '0 2px 8px rgba(0,0,0,0.3)',
+                      py: 0.5,
+                      px: 1.5,
+                    }}
+                  >
+                    Change Image
+                  </Button>
+                  <IconButton
+                    size="small"
+                    onClick={handleRemove}
+                    sx={{
+                      bgcolor: 'rgba(239, 68, 68, 0.9)',
+                      backdropFilter: 'blur(6px)',
+                      color: '#FFFFFF',
+                      '&:hover': { bgcolor: '#DC2626' },
+                      borderRadius: '8px',
+                      p: 0.6,
+                      boxShadow: '0 2px 8px rgba(0,0,0,0.3)',
+                    }}
+                    title="Remove Image"
+                  >
+                    <DeleteIcon fontSize="small" />
+                  </IconButton>
+                </div>
+
+                {/* Hover Center Overlay for Desktop */}
+                <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-3 backdrop-blur-xs">
+                  <Button
+                    variant="contained"
+                    size="small"
+                    startIcon={<CropIcon />}
+                    onClick={handleEditCrop}
+                    sx={{ bgcolor: '#C88A79', '&:hover': { bgcolor: '#A66E5E' }, fontWeight: 600, textTransform: 'none' }}
+                  >
+                    Adjust Crop
+                  </Button>
+                  <Button
+                    variant="outlined"
+                    size="small"
+                    startIcon={<CloudUploadIcon />}
+                    onClick={() => fileInputRef.current?.click()}
+                    sx={{ color: '#FFFFFF', borderColor: '#FFFFFF', '&:hover': { bgcolor: 'rgba(255,255,255,0.15)' }, textTransform: 'none' }}
+                  >
+                    Replace Image
+                  </Button>
+                </div>
+
+                {/* Aspect Ratio & Compression Badges (Top-Left) */}
+                <div className="absolute top-3 left-3 flex flex-wrap items-center gap-2 max-w-[calc(100%-180px)]">
+                  <Chip
+                    label={aspectRatio === '1:1' ? '1:1 Square' : aspectRatio === '4:3' ? '4:3 Standard' : '16:9 Banner'}
+                    size="small"
+                    sx={{ bgcolor: 'rgba(26, 18, 14, 0.75)', color: '#FFFFFF', backdropFilter: 'blur(4px)', fontWeight: 600, fontSize: '0.7rem' }}
+                  />
+                  {compressionStats && (
+                    <Chip
+                      icon={<CheckCircleIcon sx={{ color: '#FFFFFF !important', fontSize: '0.9rem' }} />}
+                      label={`${formatFileSize(compressionStats.compressedSize)} · WebP (${compressionStats.reductionPercentage}% smaller)`}
+                      size="small"
+                      sx={{ bgcolor: '#749D81', color: '#FFFFFF', fontWeight: 600, fontSize: '0.7rem' }}
+                    />
+                  )}
+                </div>
+              </div>
+            </div>
+
+            {/* Always-Visible Bottom Action Toolbar */}
+            <div className="flex flex-wrap items-center justify-between gap-2.5 p-3 rounded-2xl bg-cream-50 border border-cream-200">
+              <div className="flex flex-wrap items-center gap-2">
                 <Button
                   variant="contained"
                   size="small"
-                  startIcon={<CropIcon />}
-                  onClick={handleEditCrop}
-                  sx={{ bgcolor: '#C88A79', '&:hover': { bgcolor: '#A66E5E' }, fontWeight: 600 }}
+                  startIcon={<CloudUploadIcon />}
+                  onClick={() => fileInputRef.current?.click()}
+                  sx={{
+                    bgcolor: '#C88A79',
+                    '&:hover': { bgcolor: '#A66E5E' },
+                    color: '#FFFFFF',
+                    fontWeight: 600,
+                    textTransform: 'none',
+                    borderRadius: '10px',
+                    px: 2,
+                  }}
                 >
-                  Adjust Crop
+                  Change Image
                 </Button>
                 <Button
                   variant="outlined"
                   size="small"
-                  startIcon={<CloudUploadIcon />}
-                  onClick={() => fileInputRef.current?.click()}
-                  sx={{ color: '#FFFFFF', borderColor: '#FFFFFF', '&:hover': { bgcolor: 'rgba(255,255,255,0.15)' } }}
+                  startIcon={<CropIcon />}
+                  onClick={handleEditCrop}
+                  sx={{
+                    color: '#5C4438',
+                    borderColor: '#D4C8BC',
+                    fontWeight: 600,
+                    textTransform: 'none',
+                    borderRadius: '10px',
+                    '&:hover': { borderColor: '#A66E5E', bgcolor: '#F7F2EB' },
+                  }}
                 >
-                  Replace
+                  Adjust Crop
                 </Button>
-                <IconButton
-                  size="small"
-                  onClick={handleRemove}
-                  sx={{ bgcolor: 'rgba(239, 68, 68, 0.85)', color: '#FFFFFF', '&:hover': { bgcolor: '#DC2626' } }}
-                  title="Remove Image"
-                >
-                  <DeleteIcon fontSize="small" />
-                </IconButton>
               </div>
 
-              {/* Aspect Ratio Badge */}
-              <div className="absolute top-3 left-3 flex items-center gap-2">
-                <Chip
-                  label="16:9 Banner"
-                  size="small"
-                  sx={{ bgcolor: 'rgba(26, 18, 14, 0.75)', color: '#FFFFFF', backdropFilter: 'blur(4px)', fontWeight: 600, fontSize: '0.7rem' }}
-                />
-                {compressionStats && (
-                  <Chip
-                    icon={<CheckCircleIcon sx={{ color: '#FFFFFF !important', fontSize: '0.9rem' }} />}
-                    label={`${formatFileSize(compressionStats.compressedSize)} · WebP (${compressionStats.reductionPercentage}% smaller)`}
-                    size="small"
-                    sx={{ bgcolor: '#749D81', color: '#FFFFFF', fontWeight: 600, fontSize: '0.7rem' }}
-                  />
-                )}
-              </div>
+              <Button
+                variant="text"
+                size="small"
+                color="error"
+                startIcon={<DeleteIcon />}
+                onClick={handleRemove}
+                sx={{
+                  fontWeight: 600,
+                  textTransform: 'none',
+                  '&:hover': { bgcolor: 'rgba(239, 68, 68, 0.08)' },
+                }}
+              >
+                Remove
+              </Button>
             </div>
           </div>
         ) : (
@@ -215,20 +304,41 @@ export function ImageUploader({
               Click to choose cover image or drag & drop here
             </Typography>
             <Typography variant="caption" className="text-earth-500 block mt-1">
-              Supports PNG, JPG, WebP, GIF (Max 10 MB). Automatically cropped to 16:9 and compressed.
+              Supports PNG, JPG, WebP, GIF (Max 15 MB). Automatically cropped to {aspectRatio} and compressed.
             </Typography>
           </div>
         )
       ) : (
-        /* Fallback: Direct URL input */
-        <TextField
-          fullWidth
-          size="small"
-          placeholder="https://images.unsplash.com/photo-..."
-          value={value}
-          onChange={e => onChange(e.target.value)}
-          helperText="Direct image URL from an external source or CDN"
-        />
+        /* Fallback: Direct URL input with preview and clear action */
+        <div className="space-y-3">
+          <div className="flex items-center gap-2">
+            <TextField
+              fullWidth
+              size="small"
+              placeholder="https://images.unsplash.com/photo-..."
+              value={value}
+              onChange={e => onChange(e.target.value)}
+              helperText="Direct image URL from an external source or CDN"
+            />
+            {value && (
+              <Button
+                variant="outlined"
+                color="error"
+                size="small"
+                onClick={handleRemove}
+                startIcon={<DeleteIcon />}
+                sx={{ textTransform: 'none', fontWeight: 600, minWidth: '100px', height: '40px', mb: '22px' }}
+              >
+                Clear
+              </Button>
+            )}
+          </div>
+          {value && (
+            <div className="rounded-xl overflow-hidden border border-cream-200 aspect-video max-h-48 bg-earth-950">
+              <img src={value} alt="URL Preview" className="w-full h-full object-cover" />
+            </div>
+          )}
+        </div>
       )}
 
       {/* Image Crop Modal */}
