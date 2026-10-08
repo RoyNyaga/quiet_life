@@ -17,6 +17,7 @@ export default function AdminPostsPage() {
   const t = DICTIONARY[locale]?.admin || DICTIONARY.en.admin;
   const [searchQuery, setSearchQuery] = useState('');
   const [previewPost, setPreviewPost] = useState<Post | null>(null);
+  const [previewLocale, setPreviewLocale] = useState<'en' | 'fr'>(locale === 'fr' ? 'fr' : 'en');
 
   const filteredPosts = posts.filter(p => {
     // Search across both locales so a post isn't hidden just because its
@@ -110,22 +111,135 @@ export default function AdminPostsPage() {
       </Box>
 
       {/* Draft Preview Modal */}
-      <Dialog open={Boolean(previewPost)} onClose={() => setPreviewPost(null)} maxWidth="md" fullWidth slotProps={{ paper: { sx: { p: 4, borderRadius: 4 } } }}>
-        {previewPost && (
-          <div className="space-y-6">
-            <Typography variant="caption" className="text-terracotta-600 font-bold uppercase tracking-wider">
-              Draft Preview Mode
-            </Typography>
-            <Typography variant="h3" className="font-serif font-bold text-earth-900">
-              {previewPost.title_en}
-            </Typography>
-            {previewPost.cover_image_url && <img src={previewPost.cover_image_url} alt="" className="w-full h-64 object-cover rounded-2xl" />}
-            <MarkdownRenderer content={previewPost.content_markdown_en} />
-            <Button variant="outlined" onClick={() => setPreviewPost(null)} fullWidth>
-              Close Preview
-            </Button>
-          </div>
-        )}
+      <Dialog
+        open={Boolean(previewPost)}
+        onClose={() => setPreviewPost(null)}
+        maxWidth="md"
+        fullWidth
+        slotProps={{
+          paper: {
+            sx: {
+              p: { xs: 2.5, sm: 4 },
+              borderRadius: 4,
+              bgcolor: '#FAF8F5',
+              border: '1px solid #EAE3DA',
+              maxHeight: '90vh',
+            },
+          },
+        }}
+      >
+        {previewPost && (() => {
+          const isFr = previewLocale === 'fr';
+          const displayTitle = isFr ? (previewPost.title_fr || previewPost.title_en) : previewPost.title_en;
+          const displayExcerpt = isFr ? (previewPost.excerpt_fr || previewPost.excerpt_en) : previewPost.excerpt_en;
+          const displayContent = isFr ? (previewPost.content_markdown_fr || '') : previewPost.content_markdown_en;
+
+          return (
+            <div className="space-y-6">
+              {/* Header Bar */}
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-cream-200 pb-3">
+                <div className="flex items-center gap-3 flex-wrap">
+                  <Typography variant="caption" className="text-terracotta-600 font-bold uppercase tracking-wider">
+                    {t.publicDraftPreview}
+                  </Typography>
+
+                  {/* Language Switcher */}
+                  <div className="inline-flex rounded-xl p-1 bg-cream-100 border border-cream-200">
+                    <button
+                      type="button"
+                      onClick={() => setPreviewLocale('en')}
+                      className={`px-3 py-1 rounded-lg text-xs font-semibold transition-all cursor-pointer ${
+                        !isFr
+                          ? 'bg-white text-earth-900 shadow-xs'
+                          : 'text-earth-600 hover:text-earth-900'
+                      }`}
+                    >
+                      🇬🇧 English
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setPreviewLocale('fr')}
+                      className={`px-3 py-1 rounded-lg text-xs font-semibold transition-all cursor-pointer ${
+                        isFr
+                          ? 'bg-white text-earth-900 shadow-xs'
+                          : 'text-earth-600 hover:text-earth-900'
+                      }`}
+                    >
+                      🇫🇷 Français
+                    </button>
+                  </div>
+                </div>
+
+                <Chip
+                  label={`${previewPost.read_time_minutes || 5} ${t.readingTime || 'min read'}`}
+                  size="small"
+                  sx={{ bgcolor: '#EFEBE6', color: '#5C4438', fontWeight: 600 }}
+                />
+              </div>
+
+              {/* Title */}
+              <Typography
+                variant="h4"
+                className="font-serif font-bold text-earth-900 leading-snug"
+                sx={{
+                  fontSize: { xs: '1.4rem', sm: '1.85rem' },
+                  lineHeight: 1.3,
+                  mt: 1,
+                }}
+              >
+                {displayTitle || t.untitledArticle}
+              </Typography>
+
+              {/* Header Image with Generous Margin */}
+              {previewPost.cover_image_url && (
+                <Box sx={{ mt: 3.5, mb: 4.5 }}>
+                  <div className="w-full h-64 sm:h-80 rounded-2xl overflow-hidden shadow-md">
+                    <img src={previewPost.cover_image_url} alt="" className="w-full h-full object-cover" />
+                  </div>
+                </Box>
+              )}
+
+              {/* Description / Excerpt with Generous Margin */}
+              {displayExcerpt && (
+                <Box sx={{ mt: 3.5, mb: 4.5 }}>
+                  <Typography
+                    variant="subtitle1"
+                    className="text-earth-700 italic border-l-4 border-terracotta-400 pl-4 py-1 leading-relaxed text-base sm:text-lg"
+                  >
+                    {displayExcerpt}
+                  </Typography>
+                </Box>
+              )}
+
+              {/* Body Content with Generous Margin */}
+              <Box sx={{ mt: 4.5, mb: 3 }}>
+                <div className="bg-white p-6 sm:p-8 rounded-2xl border border-cream-200 shadow-xs">
+                  <MarkdownRenderer
+                    content={displayContent || `*${t.noContentYet}*`}
+                  />
+                </div>
+              </Box>
+
+              {/* Close Button */}
+              <Button
+                variant="outlined"
+                onClick={() => setPreviewPost(null)}
+                fullWidth
+                sx={{
+                  color: '#5C4438',
+                  borderColor: '#E8E2DA',
+                  borderRadius: 3,
+                  py: 1.2,
+                  fontWeight: 600,
+                  textTransform: 'none',
+                  '&:hover': { borderColor: '#C88A79', bgcolor: '#F5EFEB' },
+                }}
+              >
+                {t.closePreview}
+              </Button>
+            </div>
+          );
+        })()}
       </Dialog>
     </div>
   );

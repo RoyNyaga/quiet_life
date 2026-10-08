@@ -69,18 +69,32 @@ export default function ArticleShowPage() {
         <div className="space-y-4">
           <Chip label={categoryName} sx={{ bgcolor: '#749D81', color: '#FFFFFF', fontWeight: 700 }} />
 
-          <Typography variant="h3" className="font-serif font-bold text-earth-900 text-3xl sm:text-5xl leading-tight">
+          <Typography
+            variant="h3"
+            className="font-serif font-bold text-earth-900 tracking-tight leading-tight"
+            sx={{
+              fontSize: { xs: '1.75rem', sm: '2.25rem', md: '2.65rem' },
+              lineHeight: { xs: 1.25, md: 1.2 },
+              mt: 1.5,
+              mb: 2,
+            }}
+          >
             {title}
           </Typography>
 
           {excerpt && (
-            <Typography variant="h6" className="font-sans font-normal text-earth-600 text-lg leading-relaxed">
-              {excerpt}
-            </Typography>
+            <Box sx={{ mt: 2.5, mb: 4 }}>
+              <Typography
+                variant="subtitle1"
+                className="font-sans font-normal text-earth-700 text-lg sm:text-xl leading-relaxed italic border-l-4 border-terracotta-400 pl-4 py-1"
+              >
+                {excerpt}
+              </Typography>
+            </Box>
           )}
 
           {/* Author & Stats */}
-          <div className="flex flex-wrap items-center justify-between gap-4 pt-4 border-t border-b border-cream-200 py-3">
+          <div className="flex flex-wrap items-center justify-between gap-4 mt-6 mb-8 py-4 border-t border-b border-cream-200">
             <div className="flex items-center gap-3">
               <Avatar src={authorAvatar} sx={{ width: 44, height: 44, border: '2px solid #C88A79' }} />
               <div>

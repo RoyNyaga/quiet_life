@@ -11,9 +11,16 @@ interface MarkdownRendererProps {
 }
 
 export function MarkdownRenderer({ content }: MarkdownRendererProps) {
-  // Gracefully handle standalone quotes (e.g. « Quote ») into blockquotes if not already formatted
+  // Pre-process markdown to handle common formatting quirks:
+  // 1. Gracefully convert French angle quotes « Quote » into blockquotes
+  // 2. Normalize headings missing a space after # (e.g. #heading -> # heading, ##heading -> ## heading)
+  // 3. Ensure headings have a preceding blank line if preceded by normal text
+  // 4. Ensure lists have a preceding blank line if preceded by normal text
   const processedContent = (content || '')
-    .replace(/(?:^|\n)«\s*([^»\n]+)\s*»(?:\n|$)/g, '\n\n> « $1 »\n\n');
+    .replace(/(?:^|\n)«\s*([^»\n]+)\s*»(?:\n|$)/g, '\n\n> « $1 »\n\n')
+    .replace(/(^|\n)(#{1,6})([^\s#\n][^\n]*)/g, '$1$2 $3')
+    .replace(/([^\n])\n(#{1,6}\s+[^\n]+)/g, '$1\n\n$2')
+    .replace(/([^\n])\n(\s*(?:[0-9]+\.|-|\*|\+)\s+[^\n]+)/g, '$1\n\n$2');
 
   return (
     <div
@@ -29,22 +36,22 @@ export function MarkdownRenderer({ content }: MarkdownRendererProps) {
         remarkPlugins={[remarkGfm, remarkBreaks]}
         components={{
           h1: ({ children }) => (
-            <h1 className="font-serif font-bold text-3xl sm:text-4xl text-[#261D17] mt-12 mb-6 tracking-tight leading-tight">
+            <h1 className="font-serif font-bold text-2xl sm:text-3xl md:text-[2rem] text-[#261D17] mt-10 mb-4 tracking-tight leading-tight">
               {children}
             </h1>
           ),
           h2: ({ children }) => (
-            <h2 className="font-serif font-bold text-2xl sm:text-[1.85rem] text-[#261D17] mt-12 mb-5 tracking-tight leading-snug border-b border-[#EAE3DA] pb-3">
+            <h2 className="font-serif font-bold text-xl sm:text-2xl text-[#261D17] mt-10 mb-4 tracking-tight leading-snug border-b border-[#EAE3DA] pb-2.5">
               {children}
             </h2>
           ),
           h3: ({ children }) => (
-            <h3 className="font-serif font-bold text-xl sm:text-2xl text-[#261D17] mt-9 mb-4 leading-snug">
+            <h3 className="font-serif font-bold text-lg sm:text-xl text-[#261D17] mt-8 mb-3 leading-snug">
               {children}
             </h3>
           ),
           h4: ({ children }) => (
-            <h4 className="font-serif font-bold text-lg sm:text-xl text-[#261D17] mt-7 mb-3">
+            <h4 className="font-serif font-bold text-base sm:text-lg text-[#261D17] mt-6 mb-2.5">
               {children}
             </h4>
           ),
@@ -72,17 +79,26 @@ export function MarkdownRenderer({ content }: MarkdownRendererProps) {
             </div>
           ),
           ul: ({ children }) => (
-            <ul className="my-7 space-y-3.5 pl-6 list-disc marker:text-[#C88A79]">
+            <ul
+              className="my-6 space-y-3 pl-8 list-disc marker:text-[#C88A79]"
+              style={{ listStyleType: 'disc', paddingLeft: '2rem' }}
+            >
               {children}
             </ul>
           ),
           ol: ({ children }) => (
-            <ol className="my-7 space-y-3.5 pl-6 list-decimal marker:text-[#C88A79] marker:font-bold">
+            <ol
+              className="my-6 space-y-3 pl-8 list-decimal marker:text-[#C88A79] marker:font-bold"
+              style={{ listStyleType: 'decimal', paddingLeft: '2rem' }}
+            >
               {children}
             </ol>
           ),
           li: ({ children }) => (
-            <li className="text-[#362E27] text-[1.125rem] leading-[1.85] pl-1">
+            <li
+              className="text-[#362E27] text-[1.125rem] leading-[1.85] pl-1.5"
+              style={{ display: 'list-item' }}
+            >
               {children}
             </li>
           ),

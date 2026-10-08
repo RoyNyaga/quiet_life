@@ -55,6 +55,7 @@ function PostEditorContent() {
   const [status, setStatus] = useState<PostStatus>('published');
   const [slugSourceLocale, setSlugSourceLocale] = useState<'en' | 'fr'>('en');
   const [previewOpen, setPreviewOpen] = useState(false);
+  const [previewLocale, setPreviewLocale] = useState<'en' | 'fr'>('en');
 
   const slugify = (text: string) => {
     return text
@@ -183,7 +184,10 @@ function PostEditorContent() {
           <Button
             variant="outlined"
             startIcon={<VisibilityIcon />}
-            onClick={() => setPreviewOpen(true)}
+            onClick={() => {
+              setPreviewLocale(activeLangTab === 1 ? 'fr' : (locale === 'fr' ? 'fr' : 'en'));
+              setPreviewOpen(true);
+            }}
             sx={{ color: '#5C4438', borderColor: '#E8E2DA', textTransform: 'none', fontWeight: 600 }}
           >
             {t.previewDraft}
@@ -434,51 +438,127 @@ function PostEditorContent() {
         slotProps={{
           paper: {
             sx: {
-              p: 4,
+              p: { xs: 2.5, sm: 4 },
               borderRadius: 4,
               bgcolor: '#FAF8F5',
               border: '1px solid #EAE3DA',
+              maxHeight: '90vh',
             },
           },
         }}
       >
-        <div className="space-y-6">
-          <div className="flex items-center justify-between border-b border-cream-200 pb-3">
-            <Typography variant="caption" className="text-terracotta-600 font-bold uppercase tracking-wider">
-              Public Draft Preview
-            </Typography>
-            <Chip label={`${readTime} min read`} size="small" sx={{ bgcolor: '#EFEBE6', color: '#5C4438', fontWeight: 600 }} />
-          </div>
+        {(() => {
+          const isFr = previewLocale === 'fr';
+          const displayTitle = isFr ? (titleFr || titleEn) : titleEn;
+          const displayExcerpt = isFr ? (excerptFr || excerptEn) : excerptEn;
+          const displayContent = isFr ? contentFr : contentEn;
 
-          <Typography variant="h3" className="font-serif font-bold text-earth-900">
-            {titleEn || 'Untitled Article'}
-          </Typography>
+          return (
+            <div className="space-y-6">
+              {/* Header Bar */}
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-cream-200 pb-3">
+                <div className="flex items-center gap-3 flex-wrap">
+                  <Typography variant="caption" className="text-terracotta-600 font-bold uppercase tracking-wider">
+                    {t.publicDraftPreview}
+                  </Typography>
 
-          {coverImageUrl && (
-            <div className="w-full h-80 rounded-2xl overflow-hidden shadow-md">
-              <img src={coverImageUrl} alt="" className="w-full h-full object-cover" />
+                  {/* Language Switcher */}
+                  <div className="inline-flex rounded-xl p-1 bg-cream-100 border border-cream-200">
+                    <button
+                      type="button"
+                      onClick={() => setPreviewLocale('en')}
+                      className={`px-3 py-1 rounded-lg text-xs font-semibold transition-all cursor-pointer ${
+                        !isFr
+                          ? 'bg-white text-earth-900 shadow-xs'
+                          : 'text-earth-600 hover:text-earth-900'
+                      }`}
+                    >
+                      🇬🇧 English
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setPreviewLocale('fr')}
+                      className={`px-3 py-1 rounded-lg text-xs font-semibold transition-all cursor-pointer ${
+                        isFr
+                          ? 'bg-white text-earth-900 shadow-xs'
+                          : 'text-earth-600 hover:text-earth-900'
+                      }`}
+                    >
+                      🇫🇷 Français
+                    </button>
+                  </div>
+                </div>
+
+                <Chip
+                  label={`${readTime} ${t.readingTime || 'min read'}`}
+                  size="small"
+                  sx={{ bgcolor: '#EFEBE6', color: '#5C4438', fontWeight: 600 }}
+                />
+              </div>
+
+              {/* Article Title - Reduced Size & Proportional */}
+              <Typography
+                variant="h4"
+                className="font-serif font-bold text-earth-900 leading-snug"
+                sx={{
+                  fontSize: { xs: '1.4rem', sm: '1.85rem' },
+                  lineHeight: 1.3,
+                  mt: 1,
+                }}
+              >
+                {displayTitle || t.untitledArticle}
+              </Typography>
+
+              {/* Cover Image with Generous Margin */}
+              {coverImageUrl && (
+                <Box sx={{ mt: 3.5, mb: 4.5 }}>
+                  <div className="w-full h-64 sm:h-80 rounded-2xl overflow-hidden shadow-md">
+                    <img src={coverImageUrl} alt="" className="w-full h-full object-cover" />
+                  </div>
+                </Box>
+              )}
+
+              {/* Description / Excerpt with Generous Margin */}
+              {displayExcerpt && (
+                <Box sx={{ mt: 3.5, mb: 4.5 }}>
+                  <Typography
+                    variant="subtitle1"
+                    className="text-earth-700 italic border-l-4 border-terracotta-400 pl-4 py-1 leading-relaxed text-base sm:text-lg"
+                  >
+                    {displayExcerpt}
+                  </Typography>
+                </Box>
+              )}
+
+              {/* Body Content with Generous Margin */}
+              <Box sx={{ mt: 4.5, mb: 3 }}>
+                <div className="bg-white p-6 sm:p-8 rounded-2xl border border-cream-200 shadow-xs">
+                  <MarkdownRenderer
+                    content={displayContent || `*${t.noContentYet}*`}
+                  />
+                </div>
+              </Box>
+
+              {/* Close Button */}
+              <Button
+                variant="outlined"
+                onClick={() => setPreviewOpen(false)}
+                fullWidth
+                sx={{
+                  color: '#5C4438',
+                  borderColor: '#E8E2DA',
+                  borderRadius: 3,
+                  py: 1.2,
+                  fontWeight: 600,
+                  textTransform: 'none',
+                  '&:hover': { borderColor: '#C88A79', bgcolor: '#F5EFEB' },
+                }}
+              >
+                {t.closePreview}
+              </Button>
             </div>
-          )}
-
-          {excerptEn && (
-            <Typography variant="subtitle1" className="text-earth-600 italic border-l-2 border-terracotta-400 pl-4">
-              {excerptEn}
-            </Typography>
-          )}
-
-          <div className="bg-white p-6 rounded-2xl border border-cream-200">
-            <MarkdownRenderer content={contentEn || '*No markdown content entered yet.*'} />
-          </div>
-
-          <Button
-            variant="outlined"
-            onClick={() => setPreviewOpen(false)}
-            fullWidth
-            sx={{ color: '#5C4438', borderColor: '#E8E2DA' }}
-          >
-            Close Preview
-          </Button>
-        </div>
+          );
+        })()}
       </Dialog>
     </div>
   );

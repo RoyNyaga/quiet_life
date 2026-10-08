@@ -2,8 +2,8 @@
 
 import { useState } from 'react';
 import Link from 'next/link';
+import Image from 'next/image';
 import { Typography, TextField, Button, Snackbar, Alert } from '@mui/material';
-import SpaIcon from '@mui/icons-material/Spa';
 import SendIcon from '@mui/icons-material/Send';
 import { useApp } from '@/lib/store';
 import { getLocalizedField, DICTIONARY } from '@/lib/i18n';
@@ -29,14 +29,26 @@ export function Footer() {
       <div className="max-w-7xl mx-auto px-4 grid grid-cols-1 md:grid-cols-4 gap-10">
         {/* Brand Column */}
         <div className="md:col-span-1 space-y-4">
-          <div className="flex items-center gap-2 text-earth-900">
-            <div className="w-9 h-9 rounded-xl bg-terracotta-100 flex items-center justify-center text-terracotta-600">
-              <SpaIcon />
+          <Link href={`/${locale}`} className="flex items-center gap-2.5 text-earth-900 group inline-flex">
+            <div className="w-9 h-9 rounded-xl bg-white/80 border border-cream-200 flex items-center justify-center p-1 shadow-xs transition-transform duration-200 group-hover:scale-105">
+              <Image
+                src="/logo-icon.png"
+                alt="Quiet Life Logo"
+                width={32}
+                height={32}
+                className="w-full h-full object-contain"
+              />
             </div>
-            <Typography variant="h6" className="font-serif font-bold text-earth-900">
-              Quiet Life
-            </Typography>
-          </div>
+            <div className="flex flex-col justify-center">
+              <div className="font-sans font-bold text-lg tracking-tight leading-tight flex items-center gap-1">
+                <span className="text-[#A87462]">Quiet</span>
+                <span className="text-[#60866E]">Life</span>
+              </div>
+              <span className="font-sans text-earth-600 text-[9px] tracking-widest uppercase font-semibold leading-none mt-0.5">
+                Mindful Living
+              </span>
+            </div>
+          </Link>
           <Typography variant="body2" className="text-earth-600 leading-relaxed">
             A serene space dedicated to mindfulness, health, personal development, motivation, and conscious quality of life.
           </Typography>
