@@ -55,7 +55,7 @@ export interface Post {
   categories?: Category | null;
   profiles?: Profile | null;
   post_tags?: { tags: Tag }[];
-  likes_count?: number;
+  likes_count: number;
   user_has_liked?: boolean;
 }
 
