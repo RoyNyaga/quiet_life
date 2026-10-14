@@ -49,6 +49,7 @@ export function AuthModal({ open, onClose, initialMode = 'signin', promptMessage
       router.push(`/${locale}/admin/dashboard`);
       router.refresh();
     } else {
+      router.push(`/${locale}/profile`);
       router.refresh();
     }
   };
