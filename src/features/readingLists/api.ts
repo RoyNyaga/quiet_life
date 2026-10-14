@@ -1,6 +1,6 @@
 import { createClient } from '@/lib/supabase/client';
 import { AppError, throwIfError } from '@/lib/query/errors';
-import type { ReadingList, ReadingListItem } from '@/types/database';
+import type { ReadingList, ReadingListItem, Post } from '@/types/database';
 
 export async function fetchReadingLists(userId: string): Promise<ReadingList[]> {
   const supabase = createClient();
@@ -138,4 +138,35 @@ export async function removeReadingListItem({
     .eq('list_id', listId)
     .eq('post_id', postId);
   throwIfError(error);
+}
+
+export async function fetchReadingListById(id: string): Promise<ReadingList | null> {
+  const supabase = createClient();
+  if (!supabase || !id) return null;
+
+  const { data, error } = await supabase
+    .from('reading_lists')
+    .select('*, profiles(*)')
+    .eq('id', id)
+    .maybeSingle();
+
+  throwIfError(error);
+  return (data as ReadingList | null) ?? null;
+}
+
+export async function fetchArticlesForReadingList(listId: string): Promise<Post[]> {
+  const supabase = createClient();
+  if (!supabase || !listId) return [];
+
+  const { data, error } = await supabase
+    .from('reading_list_items')
+    .select('post_id, created_at, posts(*, categories(*), profiles(*), post_tags(*, tags(*)))')
+    .eq('list_id', listId)
+    .order('created_at', { ascending: false });
+
+  throwIfError(error);
+  if (!data) return [];
+  return data
+    .map((item: any) => item.posts)
+    .filter((p: any): p is Post => Boolean(p));
 }

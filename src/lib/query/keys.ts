@@ -23,6 +23,8 @@ export const qk = {
     all: ['readingLists'] as const,
     byUser: (userId?: string | null) => ['readingLists', userId ?? null] as const,
     items: (userId?: string | null) => ['readingLists', userId ?? null, 'items'] as const,
+    detail: (listId: string) => ['readingLists', 'detail', listId] as const,
+    articles: (listId: string) => ['readingLists', 'detail', listId, 'articles'] as const,
   },
   comments: {
     all: ['comments'] as const,
