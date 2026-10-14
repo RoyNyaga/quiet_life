@@ -26,6 +26,9 @@ import SaveIcon from '@mui/icons-material/Save';
 import VisibilityIcon from '@mui/icons-material/Visibility';
 import ArrowBackIcon from '@mui/icons-material/ArrowBack';
 import { useApp } from '@/lib/store';
+import { useAdminPosts, useCreatePost, useUpdatePost } from '@/features/posts';
+import { useCategories } from '@/features/categories';
+import { useTags } from '@/features/tags';
 import { MarkdownRenderer } from '@/components/article/MarkdownRenderer';
 import { ImageUploader } from '@/components/admin/ImageUploader';
 import { MarkdownEditor } from '@/components/admin/MarkdownEditor';
@@ -36,7 +39,12 @@ function PostEditorContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const editId = searchParams.get('edit');
-  const { posts, categories, tags, createPost, updatePost, locale } = useApp();
+  const { locale } = useApp();
+  const { data: posts = [] } = useAdminPosts();
+  const { data: categories = [] } = useCategories();
+  const { data: tags = [] } = useTags();
+  const createPostMutation = useCreatePost();
+  const updatePostMutation = useUpdatePost();
   const t = DICTIONARY[locale]?.admin || DICTIONARY.en.admin;
 
   const [activeLangTab, setActiveLangTab] = useState<0 | 1>(0);
@@ -126,7 +134,7 @@ function PostEditorContent() {
     setSelectedTagIds(typeof value === 'string' ? value.split(',') : value);
   };
 
-  const [isSaving, setIsSaving] = useState(false);
+  const isSaving = createPostMutation.isPending || updatePostMutation.isPending;
 
   const handleSave = async (e?: React.FormEvent) => {
     if (e) e.preventDefault();
@@ -136,41 +144,32 @@ function PostEditorContent() {
       return;
     }
 
-    setIsSaving(true);
-    try {
-      const assignedTags = tags
-        .filter(t => selectedTagIds.includes(t.id))
-        .map(t => ({ tags: t }));
+    const assignedTags = tags
+      .filter(t => selectedTagIds.includes(t.id))
+      .map(t => ({ tags: t }));
 
-      const postPayload = {
-        title_en: titleEn,
-        title_fr: titleFr,
-        slug: slug || `article-${Date.now()}`,
-        slug_source_locale: slugSourceLocale,
-        excerpt_en: excerptEn,
-        excerpt_fr: excerptFr,
-        content_markdown_en: contentEn,
-        content_markdown_fr: contentFr,
-        category_id: categoryId,
-        cover_image_url: coverImageUrl || null,
-        read_time_minutes: readTime || 5,
-        status,
-        post_tags: assignedTags,
-      };
+    const postPayload = {
+      title_en: titleEn,
+      title_fr: titleFr,
+      slug: slug || `article-${Date.now()}`,
+      slug_source_locale: slugSourceLocale,
+      excerpt_en: excerptEn,
+      excerpt_fr: excerptFr,
+      content_markdown_en: contentEn,
+      content_markdown_fr: contentFr,
+      category_id: categoryId,
+      cover_image_url: coverImageUrl || null,
+      read_time_minutes: readTime || 5,
+      status,
+      post_tags: assignedTags,
+    };
 
-      if (editId) {
-        const ok = await updatePost(editId, postPayload);
-        if (ok) {
-          router.push(`/${locale}/admin/posts`);
-        }
-      } else {
-        const ok = await createPost(postPayload);
-        if (ok) {
-          router.push(`/${locale}/admin/posts`);
-        }
-      }
-    } finally {
-      setIsSaving(false);
+    if (editId) {
+      await updatePostMutation.mutateAsync({ id: editId, ...postPayload });
+      router.push(`/${locale}/admin/posts`);
+    } else {
+      await createPostMutation.mutateAsync(postPayload);
+      router.push(`/${locale}/admin/posts`);
     }
   };
 

@@ -11,7 +11,7 @@ import {
 import CloudUploadIcon from '@mui/icons-material/CloudUpload';
 import PhotoCameraIcon from '@mui/icons-material/PhotoCamera';
 import CropIcon from '@mui/icons-material/Crop';
-import DeleteOutlineIcon from '@mui/icons-material/DeleteOutline';
+import DeleteOutlineRoundedIcon from '@mui/icons-material/DeleteOutlineRounded';
 import CheckCircleIcon from '@mui/icons-material/CheckCircle';
 import { ImageCropModal } from '@/components/admin/ImageCropModal';
 import { formatFileSize, CompressionResult } from '@/lib/storage';
@@ -217,7 +217,7 @@ export function AvatarUploader({
               variant="outlined"
               size="small"
               color="error"
-              startIcon={<DeleteOutlineIcon />}
+              startIcon={<DeleteOutlineRoundedIcon />}
               onClick={handleRemove}
               sx={{
                 textTransform: 'none',

@@ -7,8 +7,14 @@ import BookmarkIcon from '@mui/icons-material/Bookmark';
 import AddIcon from '@mui/icons-material/Add';
 import { motion } from 'framer-motion';
 import { useApp } from '@/lib/store';
+import {
+  useReadingLists,
+  useReadingListItems,
+  useCreateReadingList,
+  useToggleReadingListItem,
+} from '@/features/readingLists';
 import { Post } from '@/types/database';
-import { DICTIONARY } from '@/lib/i18n';
+import { DICTIONARY, getLocalizedField } from '@/lib/i18n';
 
 interface BookmarkDrawerProps {
   open: boolean;
@@ -17,29 +23,42 @@ interface BookmarkDrawerProps {
 }
 
 export function BookmarkDrawer({ open, onClose, targetPost }: BookmarkDrawerProps) {
-  const { locale, readingLists, readingListItems, createReadingList, toggleSavedToReadingList } = useApp();
+  const { locale, user } = useApp();
+  const { data: readingLists = [] } = useReadingLists(user?.id);
+  const { data: readingListItems = [] } = useReadingListItems(user?.id);
+  const createListMutation = useCreateReadingList(user?.id);
+  const toggleItemMutation = useToggleReadingListItem(user?.id);
   const t = DICTIONARY[locale];
   const [newListName, setNewListName] = useState('');
   const [isCreating, setIsCreating] = useState(false);
   const [toastMsg, setToastMsg] = useState('');
 
+  // Unauthenticated users cannot view or interact with the reading list drawer
+  if (!user) {
+    return null;
+  }
+
   const handleToggleItem = (listId: string) => {
     if (!targetPost) return;
-    toggleSavedToReadingList(listId, targetPost.id);
     const isSaved = readingListItems.some(i => i.list_id === listId && i.post_id === targetPost.id);
-    setToastMsg(isSaved ? 'Removed from reading list' : 'Saved to reading list!');
+    toggleItemMutation.mutate({ listId, postId: targetPost.id, isSaved });
+    setToastMsg(isSaved ? t.lists.removedToast : t.lists.savedToast);
   };
 
-  const handleCreateList = (e: React.FormEvent) => {
+  const handleCreateList = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!newListName.trim()) return;
-    const created = createReadingList(newListName.trim());
-    if (targetPost) {
-      toggleSavedToReadingList(created.id, targetPost.id);
+    const name = newListName.trim();
+    setIsCreating(true);
+    try {
+      const created = await createListMutation.mutateAsync({ name, is_private: true });
+      if (targetPost && created) {
+        toggleItemMutation.mutate({ listId: created.id, postId: targetPost.id, isSaved: false });
+      }
+      setNewListName('');
+    } finally {
+      setIsCreating(false);
     }
-    setNewListName('');
-    setIsCreating(false);
-    setToastMsg('Created new list and saved article!');
   };
 
   return (
@@ -66,10 +85,10 @@ export function BookmarkDrawer({ open, onClose, targetPost }: BookmarkDrawerProp
           <img src={targetPost.cover_image_url || ''} alt="" className="w-14 h-14 rounded-lg object-cover" />
           <div className="overflow-hidden">
             <Typography variant="caption" className="text-earth-500 block">
-              Article to save:
+              {t.lists.articleToSave}
             </Typography>
             <Typography variant="body2" className="font-serif font-semibold text-earth-900 truncate">
-              {targetPost.title_en}
+              {getLocalizedField(targetPost, 'title', locale)}
             </Typography>
           </div>
         </Box>
@@ -95,7 +114,7 @@ export function BookmarkDrawer({ open, onClose, targetPost }: BookmarkDrawerProp
                         {list.name}
                       </Typography>
                       <Typography variant="caption" className="text-earth-500">
-                        {itemCount} articles
+                        {itemCount} {t.lists.articlesCount}
                       </Typography>
                     </div>
                     {targetPost && <Checkbox checked={isSaved} sx={{ color: '#C88A79', '&.Mui-checked': { color: '#C88A79' } }} />}
@@ -121,10 +140,10 @@ export function BookmarkDrawer({ open, onClose, targetPost }: BookmarkDrawerProp
           />
           <div className="flex gap-2">
             <Button fullWidth variant="contained" size="small" type="submit" sx={{ bgcolor: '#C88A79', '&:hover': { bgcolor: '#A66E5E' } }}>
-              Save
+              {t.lists.save}
             </Button>
             <Button fullWidth variant="outlined" size="small" onClick={() => setIsCreating(false)}>
-              Cancel
+              {t.lists.cancel}
             </Button>
           </div>
         </form>

@@ -11,7 +11,9 @@ import FavoriteIcon from '@mui/icons-material/Favorite';
 import LanguageIcon from '@mui/icons-material/Language';
 import { Post, Locale } from '@/types/database';
 import { useApp } from '@/lib/store';
-import { getLocalizedField } from '@/lib/i18n';
+import { useUserLikes, useToggleLike } from '@/features/likes';
+import { useReadingListItems } from '@/features/readingLists';
+import { getLocalizedField, DICTIONARY } from '@/lib/i18n';
 import { BookmarkDrawer } from '../drawers/BookmarkDrawer';
 
 interface SocialShareBarProps {
@@ -19,7 +21,11 @@ interface SocialShareBarProps {
 }
 
 export function SocialShareBar({ post }: SocialShareBarProps) {
-  const { locale, readingListItems, togglePostLike } = useApp();
+  const { locale, user, openAuthModal } = useApp();
+  const { isLiked } = useUserLikes(user?.id);
+  const toggleLikeMutation = useToggleLike(user?.id);
+  const { data: readingListItems = [] } = useReadingListItems(user?.id);
+  const t = DICTIONARY[locale];
   const [bookmarkOpen, setBookmarkOpen] = useState(false);
   const [toastMsg, setToastMsg] = useState('');
   const [shareLocale, setShareLocale] = useState<Locale>(locale);
@@ -50,14 +56,23 @@ export function SocialShareBar({ post }: SocialShareBarProps) {
     }
   };
 
-  const isSaved = readingListItems.some(i => i.post_id === post.id);
+  const hasLiked = user ? isLiked(post.id) : false;
+  const isSaved = user ? readingListItems.some(i => i.post_id === post.id) : false;
+
+  const handleLike = () => {
+    if (!user) {
+      openAuthModal('signin', t.lists.authPromptLike);
+      return;
+    }
+    toggleLikeMutation.mutate({ postId: post.id, nextLiked: !hasLiked });
+  };
 
   return (
     <>
       <div className="flex flex-wrap items-center gap-3">
         <Box className="flex items-center gap-1.5 p-1.5 rounded-2xl bg-white border border-cream-200 shadow-sm w-fit">
-          <Tooltip title="Like Article">
-            <IconButton onClick={() => togglePostLike(post.id)} color={post.user_has_liked ? 'error' : 'default'} size="small">
+          <Tooltip title={t.article.likePost}>
+            <IconButton onClick={handleLike} color={hasLiked ? 'error' : 'default'} size="small">
               <FavoriteIcon />
             </IconButton>
           </Tooltip>
@@ -80,8 +95,18 @@ export function SocialShareBar({ post }: SocialShareBarProps) {
             </IconButton>
           </Tooltip>
 
-          <Tooltip title="Save to Reading List">
-            <IconButton onClick={() => setBookmarkOpen(true)} sx={{ color: isSaved ? '#C88A79' : '#5C4438' }} size="small">
+          <Tooltip title={t.article.saveToList}>
+            <IconButton
+              onClick={() => {
+                if (!user) {
+                  openAuthModal('signin', t.lists.authPromptReadingList);
+                } else {
+                  setBookmarkOpen(true);
+                }
+              }}
+              sx={{ color: isSaved ? '#C88A79' : '#5C4438' }}
+              size="small"
+            >
               {isSaved ? <BookmarkIcon /> : <BookmarkBorderIcon />}
             </IconButton>
           </Tooltip>

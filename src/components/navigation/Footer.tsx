@@ -3,25 +3,31 @@
 import { useState } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
-import { Typography, TextField, Button, Snackbar, Alert } from '@mui/material';
+import { Typography, TextField, Button } from '@mui/material';
 import SendIcon from '@mui/icons-material/Send';
 import { useApp } from '@/lib/store';
+import { useCategories } from '@/features/categories';
+import { useSubscribeNewsletter } from '@/features/subscriptions';
 import { getLocalizedField, DICTIONARY } from '@/lib/i18n';
 
 export function Footer() {
-  const { locale, categories, subscribeNewsletter } = useApp();
+  const { locale } = useApp();
+  const { data: categories = [] } = useCategories();
+  const subscribeMutation = useSubscribeNewsletter();
   const t = DICTIONARY[locale];
   const [email, setEmail] = useState('');
-  const [toastMsg, setToastMsg] = useState('');
 
   const handleSubscribe = (e: React.FormEvent) => {
     e.preventDefault();
     if (!email.trim()) return;
-    const ok = subscribeNewsletter(email.trim());
-    if (ok) {
-      setToastMsg('Thank you for subscribing to Quiet Life!');
-      setEmail('');
-    }
+    subscribeMutation.mutate(
+      { email: email.trim() },
+      {
+        onSuccess: () => {
+          setEmail('');
+        },
+      }
+    );
   };
 
   return (
@@ -121,12 +127,6 @@ export function Footer() {
       <div className="max-w-7xl mx-auto px-4 mt-12 pt-6 border-t border-cream-200 text-center text-xs text-earth-500">
         &copy; {new Date().getFullYear()} Quiet Life. All rights reserved. Mindful Living Platform.
       </div>
-
-      <Snackbar open={Boolean(toastMsg)} autoHideDuration={4000} onClose={() => setToastMsg('')}>
-        <Alert severity="success" sx={{ width: '100%' }}>
-          {toastMsg}
-        </Alert>
-      </Snackbar>
     </footer>
   );
 }

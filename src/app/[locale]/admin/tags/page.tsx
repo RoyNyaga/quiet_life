@@ -28,10 +28,19 @@ import CheckIcon from '@mui/icons-material/Check';
 import { DICTIONARY } from '@/lib/i18n';
 import { useApp } from '@/lib/store';
 import { Tag } from '@/types/database';
+import { useTags } from '@/features/tags/queries';
+import { useCreateTag, useUpdateTag, useDeleteTag } from '@/features/tags/mutations';
 
 export default function AdminTagsPage() {
-  const { tags, createTag, updateTag, deleteTag, locale } = useApp();
+  const { locale } = useApp();
+  const { data: tags = [] } = useTags();
+  const createTagMutation = useCreateTag();
+  const updateTagMutation = useUpdateTag();
+  const deleteTagMutation = useDeleteTag();
   const t = DICTIONARY[locale]?.admin || DICTIONARY.en.admin;
+
+  const isSaving = createTagMutation.isPending || updateTagMutation.isPending;
+  const isDeleting = deleteTagMutation.isPending;
 
   const [modalOpen, setModalOpen] = useState(false);
   const [editTag, setEditTag] = useState<Tag | null>(null);
@@ -59,18 +68,25 @@ export default function AdminTagsPage() {
     if (!nameEn.trim()) return;
 
     if (editTag) {
-      updateTag(editTag.id, { name_en: nameEn, name_fr: nameFr });
+      updateTagMutation.mutate({ id: editTag.id, name_en: nameEn.trim(), name_fr: nameFr.trim() || nameEn.trim() }, {
+        onSuccess: () => setModalOpen(false),
+      });
     } else {
-      createTag({ name_en: nameEn, name_fr: nameFr, slug: nameEn.toLowerCase().replace(/\s+/g, '-') });
+      createTagMutation.mutate({
+        name_en: nameEn.trim(),
+        name_fr: nameFr.trim() || nameEn.trim(),
+        slug: nameEn.toLowerCase().replace(/\s+/g, '-'),
+      }, {
+        onSuccess: () => setModalOpen(false),
+      });
     }
-
-    setModalOpen(false);
   };
 
   const handleConfirmDelete = () => {
     if (deleteConfirmTag) {
-      deleteTag(deleteConfirmTag.id);
-      setDeleteConfirmTag(null);
+      deleteTagMutation.mutate(deleteConfirmTag.id, {
+        onSuccess: () => setDeleteConfirmTag(null),
+      });
     }
   };
 
@@ -165,6 +181,7 @@ export default function AdminTagsPage() {
             variant="contained"
             color="error"
             onClick={handleConfirmDelete}
+            disabled={isDeleting}
             sx={{
               borderRadius: 3,
               fontWeight: 600,
@@ -302,6 +319,7 @@ export default function AdminTagsPage() {
             <Button
               type="submit"
               variant="contained"
+              disabled={isSaving}
               startIcon={<CheckIcon />}
               sx={{
                 bgcolor: '#C88A79',

@@ -9,11 +9,16 @@ import DeleteIcon from '@mui/icons-material/Delete';
 import VisibilityIcon from '@mui/icons-material/Visibility';
 import { DICTIONARY, getLocalizedField } from '@/lib/i18n';
 import { useApp } from '@/lib/store';
+import { useAdminPosts, useDeletePost } from '@/features/posts';
+import { useCategories } from '@/features/categories';
 import { MarkdownRenderer } from '@/components/article/MarkdownRenderer';
 import { Post } from '@/types/database';
 
 export default function AdminPostsPage() {
-  const { posts, categories, deletePost, locale } = useApp();
+  const { locale } = useApp();
+  const { data: posts = [], isLoading } = useAdminPosts();
+  const { data: categories = [] } = useCategories();
+  const deletePostMutation = useDeletePost();
   const t = DICTIONARY[locale]?.admin || DICTIONARY.en.admin;
   const [searchQuery, setSearchQuery] = useState('');
   const [previewPost, setPreviewPost] = useState<Post | null>(null);
@@ -98,7 +103,12 @@ export default function AdminPostsPage() {
                       <IconButton component={Link} href={`/${locale}/admin/posts/new?edit=${post.id}`} size="small">
                         <EditIcon />
                       </IconButton>
-                      <IconButton onClick={() => deletePost(post.id)} size="small" color="error">
+                      <IconButton
+                        onClick={() => deletePostMutation.mutate(post.id)}
+                        disabled={deletePostMutation.isPending}
+                        size="small"
+                        color="error"
+                      >
                         <DeleteIcon />
                       </IconButton>
                     </TableCell>

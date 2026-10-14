@@ -101,3 +101,12 @@ export interface Subscription {
   status: SubscriptionStatus;
   created_at: string;
 }
+
+export interface PostLike {
+  id: string;
+  post_id: string;
+  user_id: string;
+  session_identifier?: string | null;
+  created_at: string;
+}
+

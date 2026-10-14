@@ -3,12 +3,14 @@
 import { useEffect } from 'react';
 import { useParams } from 'next/navigation';
 import Link from 'next/link';
-import { Container, Typography, Chip, Avatar, Box, Alert } from '@mui/material';
+import { Container, Typography, Chip, Avatar, Box, Alert, CircularProgress } from '@mui/material';
 import AccessTimeIcon from '@mui/icons-material/AccessTime';
 import VisibilityIcon from '@mui/icons-material/Visibility';
 import CalendarTodayIcon from '@mui/icons-material/CalendarToday';
 import ArrowBackIcon from '@mui/icons-material/ArrowBack';
 import { useApp } from '@/lib/store';
+import { usePost, usePosts, useIncrementViews } from '@/features/posts';
+import { useCategories } from '@/features/categories';
 import { getLocalizedField, DICTIONARY } from '@/lib/i18n';
 import { MarkdownRenderer } from '@/components/article/MarkdownRenderer';
 import { SocialShareBar } from '@/components/article/SocialShareBar';
@@ -18,17 +20,30 @@ import { ArticleCard } from '@/components/article/ArticleCard';
 export default function ArticleShowPage() {
   const params = useParams();
   const slug = params?.slug as string;
-  const { posts, categories, locale, incrementViews } = useApp();
+  const { locale } = useApp();
+  const { data: post, isLoading: isPostLoading } = usePost(slug);
+  const { data: posts = [] } = usePosts();
+  const { data: categories = [] } = useCategories();
+  const incrementViewsMutation = useIncrementViews();
   const t = DICTIONARY[locale];
-
-  const post = posts.find(p => p.slug === slug || p.id === slug);
 
   // Trigger view count increment once on mount
   useEffect(() => {
-    if (post) {
-      incrementViews(post.id);
+    if (post?.id) {
+      incrementViewsMutation.mutate(post.id);
     }
   }, [post?.id]);
+
+  if (isPostLoading) {
+    return (
+      <Container maxWidth="md" className="py-24 text-center space-y-4">
+        <CircularProgress sx={{ color: '#C88A79' }} />
+        <Typography variant="body2" className="text-earth-600">
+          {locale === 'fr' ? 'Chargement de l’article...' : 'Loading mindful reflection...'}
+        </Typography>
+      </Container>
+    );
+  }
 
   if (!post) {
     return (

@@ -9,21 +9,30 @@ import ArrowBackIcon from '@mui/icons-material/ArrowBack';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useApp } from '@/lib/store';
 import { getLocalizedField, DICTIONARY } from '@/lib/i18n';
-import { createClient } from '@/lib/supabase/client';
+import { useSignIn, useSignUp } from '@/features/auth/mutations';
+import { useCategories } from '@/features/categories';
+import { getErrorMessage } from '@/lib/query/errors';
 import { AvatarUploader } from '@/components/auth/AvatarUploader';
 
 interface AuthModalProps {
   open: boolean;
   onClose: () => void;
   initialMode?: 'signin' | 'signup';
+  promptMessage?: string;
 }
 
-export function AuthModal({ open, onClose, initialMode = 'signin' }: AuthModalProps) {
+export function AuthModal({ open, onClose, initialMode = 'signin', promptMessage }: AuthModalProps) {
   const router = useRouter();
-  const { locale, categories, setUser } = useApp();
+  const { locale, setNotification } = useApp();
+  const { data: categories = [] } = useCategories();
   const t = DICTIONARY[locale];
   const [mode, setMode] = useState<'signin' | 'signup'>(initialMode);
   const [step, setStep] = useState<1 | 2 | 3>(1);
+
+  // React Query Auth Mutations
+  const signInMutation = useSignIn();
+  const signUpMutation = useSignUp();
+  const isSubmitting = signInMutation.isPending || signUpMutation.isPending;
 
   // Form State
   const [fullName, setFullName] = useState('');
@@ -33,13 +42,14 @@ export function AuthModal({ open, onClose, initialMode = 'signin' }: AuthModalPr
   const [avatarUrl, setAvatarUrl] = useState('');
   const [selectedCategoryIds, setSelectedCategoryIds] = useState<string[]>([]);
   const [errorMsg, setErrorMsg] = useState('');
-  const [loading, setLoading] = useState(false);
 
   const handleSuccessAuth = (role: 'admin' | 'user') => {
-    setLoading(false);
     onClose();
     if (role === 'admin') {
       router.push(`/${locale}/admin/dashboard`);
+      router.refresh();
+    } else {
+      router.refresh();
     }
   };
 
@@ -74,152 +84,49 @@ export function AuthModal({ open, onClose, initialMode = 'signin' }: AuthModalPr
 
   const handleCompleteRegistration = async () => {
     setErrorMsg('');
-    setLoading(true);
-    const supabase = createClient();
+    try {
+      const result = await signUpMutation.mutateAsync({
+        email: email.trim(),
+        password,
+        fullName: fullName.trim() || 'Mindful Reader',
+        avatarUrl: avatarUrl || null,
+      });
 
-    if (supabase) {
-      try {
-        const { data, error } = await supabase.auth.signUp({
-          email: email.trim(),
-          password,
-          options: {
-            data: {
-              full_name: fullName.trim() || 'Mindful Reader',
-              avatar_url: avatarUrl || null,
-            },
-          },
+      if (result.needsEmailConfirmation) {
+        setNotification({
+          type: 'info',
+          message: t.auth.checkEmail,
         });
-
-        if (error) {
-          setErrorMsg(error.message);
-          setLoading(false);
-          return;
-        }
-
-        if (data.user) {
-          const userRole = email.trim().toLowerCase() === 'nyagaandreroy@gmail.com' ? 'admin' : 'user';
-          setUser({
-            id: data.user.id,
-            full_name: fullName.trim() || 'Mindful Reader',
-            avatar_url: avatarUrl || null,
-            role: userRole,
-            onboarding_completed: true,
-            created_at: data.user.created_at,
-            updated_at: new Date().toISOString(),
-          });
-          handleSuccessAuth(userRole);
-          return;
-        }
-      } catch (err: unknown) {
-        console.warn('Signup error:', err);
-        const msg = err instanceof Error ? err.message : 'Error completing registration';
-        setErrorMsg(msg);
-        setLoading(false);
+        onClose();
         return;
       }
-    }
 
-    // Local fallback for offline mode
-    const fallbackRole = email.trim().toLowerCase() === 'nyagaandreroy@gmail.com' ? 'admin' : 'user';
-    const fallbackId = fallbackRole === 'admin'
-      ? '22388a63-3518-45cd-b195-5fb7cdb0f871'
-      : (typeof crypto !== 'undefined' && crypto.randomUUID ? crypto.randomUUID() : 'b0000000-0000-0000-0000-' + Date.now().toString().padStart(12, '0'));
-    setUser({
-      id: fallbackId,
-      full_name: fullName.trim() || 'Mindful Reader',
-      avatar_url: avatarUrl || null,
-      role: fallbackRole,
-      onboarding_completed: true,
-      created_at: new Date().toISOString(),
-      updated_at: new Date().toISOString(),
-    });
-    handleSuccessAuth(fallbackRole);
+      if (result.profile) {
+        handleSuccessAuth(result.profile.role);
+      }
+    } catch (err: unknown) {
+      console.warn('Signup error:', err);
+      setErrorMsg(getErrorMessage(err, locale));
+    }
   };
 
   const handleLoginSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setErrorMsg('');
     if (!email || !password) {
-      setErrorMsg('Please enter email and password.');
+      setErrorMsg(t.errors.invalidCredentials);
       return;
     }
 
-    setLoading(true);
-    const supabase = createClient();
-
-    if (supabase) {
-      try {
-        const { data, error } = await supabase.auth.signInWithPassword({
-          email: email.trim(),
-          password,
-        });
-
-        if (error) {
-          // If remote DB hasn't been migrated yet or email provider is disabled, allow admin testing locally
-          if (email.trim().toLowerCase() === 'nyagaandreroy@gmail.com' && password === '123456') {
-            setUser({
-              id: '22388a63-3518-45cd-b195-5fb7cdb0f871',
-              full_name: 'Andre Roy Nyaga',
-              avatar_url: avatarUrl,
-              role: 'admin',
-              onboarding_completed: true,
-              created_at: new Date().toISOString(),
-              updated_at: new Date().toISOString(),
-            });
-            handleSuccessAuth('admin');
-            return;
-          }
-          setErrorMsg(error.message);
-          setLoading(false);
-          return;
-        }
-
-        if (data.user) {
-          const { data: profile } = await supabase
-            .from('profiles')
-            .select('*')
-            .eq('id', data.user.id)
-            .single();
-
-          const userRole =
-            (profile?.role === 'admin' || email.trim().toLowerCase() === 'nyagaandreroy@gmail.com')
-              ? 'admin'
-              : (profile?.role || 'user');
-
-          const activeUser = {
-            id: data.user.id,
-            full_name: profile?.full_name || data.user.user_metadata?.full_name || 'Andre Roy Nyaga',
-            avatar_url: profile?.avatar_url || data.user.user_metadata?.avatar_url || avatarUrl,
-            role: userRole,
-            onboarding_completed: true,
-            created_at: data.user.created_at,
-            updated_at: new Date().toISOString(),
-          };
-
-          setUser(activeUser);
-          handleSuccessAuth(userRole);
-          return;
-        }
-      } catch (err: unknown) {
-        console.warn('Login error:', err);
-      }
-    }
-
-    // Local fallback
-    if (email.trim().toLowerCase() === 'nyagaandreroy@gmail.com' && password === '123456') {
-      setUser({
-        id: '22388a63-3518-45cd-b195-5fb7cdb0f871',
-        full_name: 'Andre Roy Nyaga',
-        avatar_url: avatarUrl,
-        role: 'admin',
-        onboarding_completed: true,
-        created_at: new Date().toISOString(),
-        updated_at: new Date().toISOString(),
+    try {
+      const result = await signInMutation.mutateAsync({
+        email: email.trim(),
+        password,
       });
-      handleSuccessAuth('admin');
-    } else {
-      setErrorMsg('Invalid email or password.');
-      setLoading(false);
+      handleSuccessAuth(result.profile.role);
+    } catch (err: unknown) {
+      console.warn('Login error:', err);
+      setErrorMsg(getErrorMessage(err, locale));
     }
   };
 
@@ -304,6 +211,14 @@ export function AuthModal({ open, onClose, initialMode = 'signin' }: AuthModalPr
                 Welcome back to your mindful reading space.
               </Typography>
 
+              {promptMessage && (
+                <Box className="p-3 mb-4 rounded-xl bg-amber-50/90 border border-amber-200/90">
+                  <Typography variant="body2" className="text-amber-900 font-medium text-xs sm:text-sm">
+                    {promptMessage}
+                  </Typography>
+                </Box>
+              )}
+
               {errorMsg && (
                 <Box className="p-3 mb-4 rounded-xl bg-red-50 border border-red-200">
                   <Typography variant="caption" className="text-red-700 font-medium block">
@@ -323,7 +238,7 @@ export function AuthModal({ open, onClose, initialMode = 'signin' }: AuthModalPr
                     placeholder="name@example.com"
                     value={email}
                     onChange={e => setEmail(e.target.value)}
-                    disabled={loading}
+                    disabled={isSubmitting}
                     sx={inputStyles}
                   />
                 </div>
@@ -338,7 +253,7 @@ export function AuthModal({ open, onClose, initialMode = 'signin' }: AuthModalPr
                     placeholder="••••••••"
                     value={password}
                     onChange={e => setPassword(e.target.value)}
-                    disabled={loading}
+                    disabled={isSubmitting}
                     sx={inputStyles}
                   />
                 </div>
@@ -348,7 +263,7 @@ export function AuthModal({ open, onClose, initialMode = 'signin' }: AuthModalPr
                   variant="contained"
                   type="submit"
                   size="large"
-                  disabled={loading}
+                  disabled={isSubmitting}
                   sx={{
                     bgcolor: '#C88A79',
                     '&:hover': { bgcolor: '#A66E5E' },
@@ -359,7 +274,7 @@ export function AuthModal({ open, onClose, initialMode = 'signin' }: AuthModalPr
                     fontSize: '0.95rem',
                   }}
                 >
-                  {loading ? <CircularProgress size={24} color="inherit" /> : t.nav.signIn}
+                  {isSubmitting ? <CircularProgress size={24} color="inherit" /> : t.nav.signIn}
                 </Button>
               </form>
 
@@ -387,6 +302,14 @@ export function AuthModal({ open, onClose, initialMode = 'signin' }: AuthModalPr
                   <Typography variant="body2" className="text-earth-600 mb-5">
                     {t.onboarding.step1Subtitle}
                   </Typography>
+
+                  {promptMessage && (
+                    <Box className="p-3 mb-4 rounded-xl bg-amber-50/90 border border-amber-200/90">
+                      <Typography variant="body2" className="text-amber-900 font-medium text-xs sm:text-sm">
+                        {promptMessage}
+                      </Typography>
+                    </Box>
+                  )}
 
                   {errorMsg && (
                     <Box className="p-3 mb-4 rounded-xl bg-red-50 border border-red-200">
@@ -591,7 +514,7 @@ export function AuthModal({ open, onClose, initialMode = 'signin' }: AuthModalPr
                     variant="contained"
                     size="large"
                     onClick={handleCompleteRegistration}
-                    disabled={loading}
+                    disabled={isSubmitting}
                     sx={{
                       bgcolor: '#C88A79',
                       '&:hover': { bgcolor: '#A66E5E' },
@@ -601,7 +524,7 @@ export function AuthModal({ open, onClose, initialMode = 'signin' }: AuthModalPr
                       fontSize: '0.95rem',
                     }}
                   >
-                    {loading ? <CircularProgress size={24} color="inherit" /> : t.onboarding.finish}
+                    {isSubmitting ? <CircularProgress size={24} color="inherit" /> : t.onboarding.finish}
                   </Button>
                 </>
               )}

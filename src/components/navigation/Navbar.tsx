@@ -11,6 +11,7 @@ import CloseIcon from '@mui/icons-material/Close';
 import AdminPanelSettingsIcon from '@mui/icons-material/AdminPanelSettings';
 import Image from 'next/image';
 import { useApp } from '@/lib/store';
+import { useReadingListItems } from '@/features/readingLists';
 import { DICTIONARY } from '@/lib/i18n';
 import { Locale } from '@/types/database';
 import { BookmarkDrawer } from '../drawers/BookmarkDrawer';
@@ -19,20 +20,29 @@ import { AuthModal } from '../modals/AuthModal';
 
 export function Navbar() {
   const pathname = usePathname();
-  const { locale, setLocale, user, setUser, signOut, readingListItems } = useApp();
+  const {
+    locale,
+    setLocale,
+    user,
+    setUser,
+    signOut,
+    authModalOpen,
+    authModalMode,
+    authModalPrompt,
+    openAuthModal,
+    closeAuthModal,
+  } = useApp();
+  const { data: readingListItems = [] } = useReadingListItems(user?.id);
   const t = DICTIONARY[locale];
 
   // Drawers & Modals State
   const [bookmarkOpen, setBookmarkOpen] = useState(false);
   const [searchOpen, setSearchOpen] = useState(false);
-  const [authModalOpen, setAuthModalOpen] = useState(false);
-  const [authInitialMode, setAuthInitialMode] = useState<'signin' | 'signup'>('signin');
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
 
   const handleOpenAuth = (mode: 'signin' | 'signup') => {
-    setAuthInitialMode(mode);
-    setAuthModalOpen(true);
+    openAuthModal(mode);
   };
 
   const navLinks = [
@@ -113,8 +123,18 @@ export function Navbar() {
             </IconButton>
 
             {/* Bookmark Drawer Trigger */}
-            <IconButton onClick={() => setBookmarkOpen(true)} size="medium" sx={{ color: '#5C4438' }}>
-              <Badge badgeContent={readingListItems.length} color="primary">
+            <IconButton
+              onClick={() => {
+                if (!user) {
+                  openAuthModal('signin', t.lists.authPromptReadingList);
+                } else {
+                  setBookmarkOpen(true);
+                }
+              }}
+              size="medium"
+              sx={{ color: '#5C4438' }}
+            >
+              <Badge badgeContent={user ? readingListItems.length : 0} color="primary">
                 <BookmarkIcon />
               </Badge>
             </IconButton>
@@ -274,7 +294,12 @@ export function Navbar() {
       {/* Drawers & Modals */}
       <BookmarkDrawer open={bookmarkOpen} onClose={() => setBookmarkOpen(false)} targetPost={null} />
       <GlobalSearchDrawer open={searchOpen} onClose={() => setSearchOpen(false)} />
-      <AuthModal open={authModalOpen} onClose={() => setAuthModalOpen(false)} initialMode={authInitialMode} />
+      <AuthModal
+        open={authModalOpen}
+        onClose={closeAuthModal}
+        initialMode={authModalMode}
+        promptMessage={authModalPrompt}
+      />
     </>
   );
 }

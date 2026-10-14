@@ -36,6 +36,8 @@ import CloseIcon from '@mui/icons-material/Close';
 import { DICTIONARY } from '@/lib/i18n';
 import { useApp } from '@/lib/store';
 import { Category } from '@/types/database';
+import { useCategories } from '@/features/categories/queries';
+import { useCreateCategory, useUpdateCategory, useDeleteCategory } from '@/features/categories/mutations';
 
 const AVAILABLE_ICONS = [
   { value: 'Home', label: 'Accueil / Home', icon: <HomeIcon fontSize="small" sx={{ color: '#587C64' }} /> },
@@ -49,7 +51,11 @@ const AVAILABLE_ICONS = [
 ];
 
 export default function AdminCategoriesPage() {
-  const { categories, createCategory, updateCategory, deleteCategory, locale } = useApp();
+  const { locale } = useApp();
+  const { data: categories = [] } = useCategories();
+  const createCategoryMutation = useCreateCategory();
+  const updateCategoryMutation = useUpdateCategory();
+  const deleteCategoryMutation = useDeleteCategory();
   const t = DICTIONARY[locale]?.admin || DICTIONARY.en.admin;
 
   const [modalOpen, setModalOpen] = useState(false);
@@ -61,6 +67,9 @@ export default function AdminCategoriesPage() {
   const [nameFr, setNameFr] = useState('');
   const [slug, setSlug] = useState('');
   const [icon, setIcon] = useState('Spa');
+
+  const isSaving = createCategoryMutation.isPending || updateCategoryMutation.isPending;
+  const isDeleting = deleteCategoryMutation.isPending;
 
   const handleOpenCreate = () => {
     setEditCat(null);
@@ -92,18 +101,21 @@ export default function AdminCategoriesPage() {
     };
 
     if (editCat) {
-      updateCategory(editCat.id, payload);
+      updateCategoryMutation.mutate({ id: editCat.id, ...payload }, {
+        onSuccess: () => setModalOpen(false),
+      });
     } else {
-      createCategory(payload);
+      createCategoryMutation.mutate(payload, {
+        onSuccess: () => setModalOpen(false),
+      });
     }
-
-    setModalOpen(false);
   };
 
   const handleConfirmDelete = () => {
     if (deleteConfirmCat) {
-      deleteCategory(deleteConfirmCat.id);
-      setDeleteConfirmCat(null);
+      deleteCategoryMutation.mutate(deleteConfirmCat.id, {
+        onSuccess: () => setDeleteConfirmCat(null),
+      });
     }
   };
 
@@ -231,6 +243,7 @@ export default function AdminCategoriesPage() {
             variant="contained"
             color="error"
             onClick={handleConfirmDelete}
+            disabled={isDeleting}
             sx={{
               borderRadius: 3,
               fontWeight: 600,
@@ -456,6 +469,7 @@ export default function AdminCategoriesPage() {
             <Button
               type="submit"
               variant="contained"
+              disabled={isSaving}
               startIcon={<CheckIcon />}
               sx={{
                 bgcolor: '#C88A79',

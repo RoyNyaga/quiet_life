@@ -11,6 +11,9 @@ import AccessTimeIcon from '@mui/icons-material/AccessTime';
 import { motion } from 'framer-motion';
 import { Post } from '@/types/database';
 import { useApp } from '@/lib/store';
+import { useCategories } from '@/features/categories';
+import { useUserLikes, useToggleLike } from '@/features/likes';
+import { useReadingListItems } from '@/features/readingLists';
 import { getLocalizedField, DICTIONARY } from '@/lib/i18n';
 import { BookmarkDrawer } from '../drawers/BookmarkDrawer';
 
@@ -20,7 +23,11 @@ interface ArticleCardProps {
 }
 
 export function ArticleCard({ post, featured = false }: ArticleCardProps) {
-  const { locale, categories, readingListItems, togglePostLike } = useApp();
+  const { locale, user, openAuthModal } = useApp();
+  const { data: categories = [] } = useCategories();
+  const { isLiked } = useUserLikes(user?.id);
+  const toggleLikeMutation = useToggleLike(user?.id);
+  const { data: readingListItems = [] } = useReadingListItems(user?.id);
   const t = DICTIONARY[locale];
   const [bookmarkOpen, setBookmarkOpen] = useState(false);
 
@@ -29,7 +36,16 @@ export function ArticleCard({ post, featured = false }: ArticleCardProps) {
   const category = categories.find(c => c.id === post.category_id);
   const categoryName = category ? getLocalizedField(category, 'name', locale) : 'Wellness';
 
-  const isSaved = readingListItems.some(item => item.post_id === post.id);
+  const hasLiked = user ? isLiked(post.id) : false;
+  const isSaved = user ? readingListItems.some(item => item.post_id === post.id) : false;
+
+  const handleLike = () => {
+    if (!user) {
+      openAuthModal('signin', t.lists.authPromptLike);
+      return;
+    }
+    toggleLikeMutation.mutate({ postId: post.id, nextLiked: !hasLiked });
+  };
 
   if (featured) {
     return (
@@ -69,10 +85,19 @@ export function ArticleCard({ post, featured = false }: ArticleCardProps) {
                   </Button>
                 </Link>
                 <div className="flex items-center gap-2">
-                  <IconButton onClick={() => togglePostLike(post.id)} color={post.user_has_liked ? 'error' : 'default'}>
+                  <IconButton onClick={handleLike} color={hasLiked ? 'error' : 'default'}>
                     <FavoriteIcon />
                   </IconButton>
-                  <IconButton onClick={() => setBookmarkOpen(true)} sx={{ color: isSaved ? '#C88A79' : '#5C4438' }}>
+                  <IconButton
+                    onClick={() => {
+                      if (!user) {
+                        openAuthModal('signin', t.lists.authPromptReadingList);
+                      } else {
+                        setBookmarkOpen(true);
+                      }
+                    }}
+                    sx={{ color: isSaved ? '#C88A79' : '#5C4438' }}
+                  >
                     {isSaved ? <BookmarkIcon /> : <BookmarkBorderIcon />}
                   </IconButton>
                 </div>
@@ -120,10 +145,20 @@ export function ArticleCard({ post, featured = false }: ArticleCardProps) {
                 </Typography>
               </Link>
               <div className="flex items-center gap-1">
-                <IconButton onClick={() => togglePostLike(post.id)} size="small" color={post.user_has_liked ? 'error' : 'default'}>
+                <IconButton onClick={handleLike} size="small" color={hasLiked ? 'error' : 'default'}>
                   <FavoriteIcon fontSize="small" />
                 </IconButton>
-                <IconButton onClick={() => setBookmarkOpen(true)} size="small" sx={{ color: isSaved ? '#C88A79' : '#5C4438' }}>
+                <IconButton
+                  onClick={() => {
+                    if (!user) {
+                      openAuthModal('signin', t.lists.authPromptReadingList);
+                    } else {
+                      setBookmarkOpen(true);
+                    }
+                  }}
+                  size="small"
+                  sx={{ color: isSaved ? '#C88A79' : '#5C4438' }}
+                >
                   {isSaved ? <BookmarkIcon fontSize="small" /> : <BookmarkBorderIcon fontSize="small" />}
                 </IconButton>
               </div>

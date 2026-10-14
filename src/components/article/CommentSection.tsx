@@ -5,6 +5,7 @@ import { Typography, TextField, Button, Avatar, IconButton, Box } from '@mui/mat
 import FavoriteIcon from '@mui/icons-material/Favorite';
 import ReplyIcon from '@mui/icons-material/Reply';
 import { useApp } from '@/lib/store';
+import { useComments, useCreateComment, useToggleCommentLike } from '@/features/comments';
 import { Comment } from '@/types/database';
 import { DICTIONARY } from '@/lib/i18n';
 
@@ -13,7 +14,10 @@ interface CommentSectionProps {
 }
 
 export function CommentSection({ postId }: CommentSectionProps) {
-  const { locale, comments, addComment, toggleCommentLike, user } = useApp();
+  const { locale, user } = useApp();
+  const { data: comments = [], isLoading } = useComments(postId);
+  const createCommentMutation = useCreateComment(postId);
+  const toggleCommentLikeMutation = useToggleCommentLike(postId);
   const t = DICTIONARY[locale];
 
   // Comment Form State
@@ -28,18 +32,24 @@ export function CommentSection({ postId }: CommentSectionProps) {
     e.preventDefault();
     if (!content.trim()) return;
 
-    addComment({
-      post_id: postId,
-      content: content.trim(),
-      guest_name: user ? user.full_name : guestName.trim() || 'Mindful Guest',
-      guest_email: user ? undefined : guestEmail.trim(),
-      parent_id: replyParentId,
-    });
-
-    setContent('');
-    setGuestName('');
-    setGuestEmail('');
-    setReplyParentId(null);
+    createCommentMutation.mutate(
+      {
+        post_id: postId,
+        content: content.trim(),
+        user_id: user?.id,
+        guest_name: user ? user.full_name : guestName.trim() || 'Mindful Guest',
+        guest_email: user ? undefined : guestEmail.trim(),
+        parent_id: replyParentId,
+      },
+      {
+        onSuccess: () => {
+          setContent('');
+          setGuestName('');
+          setGuestEmail('');
+          setReplyParentId(null);
+        },
+      }
+    );
   };
 
   return (
@@ -107,9 +117,10 @@ export function CommentSection({ postId }: CommentSectionProps) {
             <Button
               type="submit"
               variant="contained"
+              disabled={createCommentMutation.isPending}
               sx={{ bgcolor: '#C88A79', '&:hover': { bgcolor: '#A66E5E' }, ml: 'auto' }}
             >
-              {t.article.submitComment}
+              {createCommentMutation.isPending ? 'Posting...' : t.article.submitComment}
             </Button>
           </div>
         </form>
@@ -140,7 +151,17 @@ export function CommentSection({ postId }: CommentSectionProps) {
                 </div>
 
                 <div className="flex items-center gap-1">
-                  <IconButton onClick={() => toggleCommentLike(comment.id)} size="small" color={comment.user_has_liked ? 'error' : 'default'}>
+                  <IconButton
+                    onClick={() =>
+                      toggleCommentLikeMutation.mutate({
+                        commentId: comment.id,
+                        userId: user?.id,
+                        nextLiked: !comment.user_has_liked,
+                      })
+                    }
+                    size="small"
+                    color={comment.user_has_liked ? 'error' : 'default'}
+                  >
                     <FavoriteIcon fontSize="small" />
                   </IconButton>
                   <Typography variant="caption" className="text-earth-600 font-semibold">
@@ -165,7 +186,17 @@ export function CommentSection({ postId }: CommentSectionProps) {
                         <Typography variant="caption" className="font-serif font-bold text-earth-900">
                           {reply.profiles ? reply.profiles.full_name : reply.guest_name}
                         </Typography>
-                        <IconButton onClick={() => toggleCommentLike(reply.id)} size="small" color={reply.user_has_liked ? 'error' : 'default'}>
+                        <IconButton
+                          onClick={() =>
+                            toggleCommentLikeMutation.mutate({
+                              commentId: reply.id,
+                              userId: user?.id,
+                              nextLiked: !reply.user_has_liked,
+                            })
+                          }
+                          size="small"
+                          color={reply.user_has_liked ? 'error' : 'default'}
+                        >
                           <FavoriteIcon fontSize="small" />
                         </IconButton>
                       </div>
