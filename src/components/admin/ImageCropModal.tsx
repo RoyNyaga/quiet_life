@@ -307,13 +307,13 @@ export function ImageCropModal({
         },
       }}
     >
-      <DialogTitle className="flex items-center justify-between border-b border-cream-200 pb-3">
+      <DialogTitle component="div" className="flex items-center justify-between border-b border-cream-200 pb-3">
         <div className="flex items-center gap-2">
           <div className="p-2 rounded-xl bg-terracotta-100 text-terracotta-700">
             <CropIcon fontSize="small" />
           </div>
           <div>
-            <Typography variant="h6" className="font-serif font-bold text-earth-900 leading-tight">
+            <Typography variant="h6" component="h2" className="font-serif font-bold text-earth-900 leading-tight">
               {title || (folder === 'avatars' ? 'Crop & Optimize Profile Photo' : 'Crop & Optimize Cover Image')}
             </Typography>
             <Typography variant="caption" className="text-earth-500">

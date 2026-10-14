@@ -1016,13 +1016,13 @@ function ProfileContent() {
           },
         }}
       >
-        <DialogTitle className="flex items-center justify-between pb-2 border-b border-cream-200">
+        <DialogTitle component="div" className="flex items-center justify-between pb-2 border-b border-cream-200">
           <div className="flex items-center gap-2">
             <Avatar sx={{ bgcolor: '#F7EBE8', color: '#C88A79', width: 36, height: 36 }}>
               <BookmarkAddRoundedIcon fontSize="small" />
             </Avatar>
             <div>
-              <Typography variant="h6" className="font-serif font-bold text-earth-900 leading-tight">
+              <Typography variant="h6" component="h2" className="font-serif font-bold text-earth-900 leading-tight">
                 Create Reading List
               </Typography>
               <Typography variant="caption" className="text-earth-500">
@@ -1129,13 +1129,13 @@ function ProfileContent() {
           },
         }}
       >
-        <DialogTitle className="flex items-center justify-between pb-2 border-b border-cream-200">
+        <DialogTitle component="div" className="flex items-center justify-between pb-2 border-b border-cream-200">
           <div className="flex items-center gap-2">
             <Avatar sx={{ bgcolor: '#F7EBE8', color: '#C88A79', width: 36, height: 36 }}>
               <EditRoundedIcon fontSize="small" />
             </Avatar>
             <div>
-              <Typography variant="h6" className="font-serif font-bold text-earth-900 leading-tight">
+              <Typography variant="h6" component="h2" className="font-serif font-bold text-earth-900 leading-tight">
                 Edit Reading List
               </Typography>
               <Typography variant="caption" className="text-earth-500">
@@ -1239,11 +1239,11 @@ function ProfileContent() {
           },
         }}
       >
-        <DialogTitle className="flex items-center gap-3 pb-2">
+        <DialogTitle component="div" className="flex items-center gap-3 pb-2">
           <Avatar sx={{ bgcolor: '#FDECEA', color: '#D32F2F', width: 40, height: 40 }}>
             <WarningAmberRoundedIcon />
           </Avatar>
-          <Typography variant="h6" className="font-serif font-bold text-earth-900">
+          <Typography variant="h6" component="h2" className="font-serif font-bold text-earth-900">
             Delete Collection?
           </Typography>
         </DialogTitle>
