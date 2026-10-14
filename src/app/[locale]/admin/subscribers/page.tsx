@@ -5,9 +5,13 @@ import { Typography, Button, TextField, Table, TableBody, TableCell, TableContai
 import DownloadIcon from '@mui/icons-material/Download';
 import { DICTIONARY } from '@/lib/i18n';
 import { useApp } from '@/lib/store';
+import { useSubscriptions } from '@/features/subscriptions';
+import { useAdminPosts } from '@/features/posts';
 
 export default function AdminSubscribersPage() {
-  const { subscriptions, posts, locale } = useApp();
+  const { locale } = useApp();
+  const { data: subscriptions = [], isLoading } = useSubscriptions();
+  const { data: posts = [] } = useAdminPosts();
   const t = DICTIONARY[locale]?.admin || DICTIONARY.en.admin;
 
   const [searchQuery, setSearchQuery] = useState('');

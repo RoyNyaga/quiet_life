@@ -1,45 +1,73 @@
 'use client';
 
 import { useState } from 'react';
-import { Drawer, Typography, IconButton, Button, TextField, Checkbox, List, ListItem, Divider, Box, Snackbar, Alert } from '@mui/material';
+import { useRouter } from 'next/navigation';
+import { Drawer, Typography, IconButton, Button, TextField, Checkbox, List, ListItem, Divider, Box, Snackbar, Alert, Tooltip } from '@mui/material';
 import CloseIcon from '@mui/icons-material/Close';
 import BookmarkIcon from '@mui/icons-material/Bookmark';
 import AddIcon from '@mui/icons-material/Add';
+import ArrowForwardRoundedIcon from '@mui/icons-material/ArrowForwardRounded';
+import OpenInNewRoundedIcon from '@mui/icons-material/OpenInNewRounded';
 import { motion } from 'framer-motion';
 import { useApp } from '@/lib/store';
+import {
+  useReadingLists,
+  useReadingListItems,
+  useCreateReadingList,
+  useToggleReadingListItem,
+} from '@/features/readingLists';
 import { Post } from '@/types/database';
-import { DICTIONARY } from '@/lib/i18n';
+import { DICTIONARY, getLocalizedField } from '@/lib/i18n';
 
 interface BookmarkDrawerProps {
   open: boolean;
   onClose: () => void;
-  targetPost: Post | null;
+  targetPost?: Post | null;
 }
 
 export function BookmarkDrawer({ open, onClose, targetPost }: BookmarkDrawerProps) {
-  const { locale, readingLists, readingListItems, createReadingList, toggleSavedToReadingList } = useApp();
+  const router = useRouter();
+  const { locale, user } = useApp();
+  const { data: readingLists = [] } = useReadingLists(user?.id);
+  const { data: readingListItems = [] } = useReadingListItems(user?.id);
+  const createListMutation = useCreateReadingList(user?.id);
+  const toggleItemMutation = useToggleReadingListItem(user?.id);
   const t = DICTIONARY[locale];
   const [newListName, setNewListName] = useState('');
   const [isCreating, setIsCreating] = useState(false);
   const [toastMsg, setToastMsg] = useState('');
 
+  // Unauthenticated users cannot view or interact with the reading list drawer
+  if (!user) {
+    return null;
+  }
+
   const handleToggleItem = (listId: string) => {
     if (!targetPost) return;
-    toggleSavedToReadingList(listId, targetPost.id);
     const isSaved = readingListItems.some(i => i.list_id === listId && i.post_id === targetPost.id);
-    setToastMsg(isSaved ? 'Removed from reading list' : 'Saved to reading list!');
+    toggleItemMutation.mutate({ listId, postId: targetPost.id, isSaved });
+    setToastMsg(isSaved ? t.lists.removedToast : t.lists.savedToast);
   };
 
-  const handleCreateList = (e: React.FormEvent) => {
+  const handleCreateList = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!newListName.trim()) return;
-    const created = createReadingList(newListName.trim());
-    if (targetPost) {
-      toggleSavedToReadingList(created.id, targetPost.id);
+    const name = newListName.trim();
+    setIsCreating(true);
+    try {
+      const created = await createListMutation.mutateAsync({ name, is_private: true });
+      if (targetPost && created) {
+        toggleItemMutation.mutate({ listId: created.id, postId: targetPost.id, isSaved: false });
+      }
+      setNewListName('');
+    } finally {
+      setIsCreating(false);
     }
-    setNewListName('');
-    setIsCreating(false);
-    setToastMsg('Created new list and saved article!');
+  };
+
+  const handleNavigateToList = (listId: string) => {
+    onClose();
+    router.push(`/${locale}/reading-lists/${listId}`);
   };
 
   return (
@@ -66,45 +94,81 @@ export function BookmarkDrawer({ open, onClose, targetPost }: BookmarkDrawerProp
           <img src={targetPost.cover_image_url || ''} alt="" className="w-14 h-14 rounded-lg object-cover" />
           <div className="overflow-hidden">
             <Typography variant="caption" className="text-earth-500 block">
-              Article to save:
+              {t.lists.articleToSave}
             </Typography>
             <Typography variant="body2" className="font-serif font-semibold text-earth-900 truncate">
-              {targetPost.title_en}
+              {getLocalizedField(targetPost, 'title', locale)}
             </Typography>
           </div>
         </Box>
       )}
 
       <Box className="flex-1 overflow-y-auto my-4">
-        <List className="p-0">
-          {readingLists.map(list => {
-            const isSaved = targetPost ? readingListItems.some(i => i.list_id === list.id && i.post_id === targetPost.id) : false;
-            const itemCount = readingListItems.filter(i => i.list_id === list.id).length;
+        {readingLists.length === 0 ? (
+          <div className="text-center py-8 px-4">
+            <Typography variant="body2" className="text-earth-500 italic mb-2">
+              {t.lists.empty}
+            </Typography>
+            <Typography variant="caption" className="text-earth-400 block">
+              {locale === 'fr' ? 'Créez votre première collection ci-dessous.' : 'Create your first mindful collection below.'}
+            </Typography>
+          </div>
+        ) : (
+          <List className="p-0">
+            {readingLists.map(list => {
+              const isSaved = targetPost ? readingListItems.some(i => i.list_id === list.id && i.post_id === targetPost.id) : false;
+              const itemCount = readingListItems.filter(i => i.list_id === list.id).length;
 
-            return (
-              <ListItem key={list.id} className="p-0 mb-2">
-                <motion.div whileHover={{ scale: 1.01 }} className="w-full">
-                  <div
-                    onClick={() => handleToggleItem(list.id)}
-                    className={`p-3 rounded-xl border cursor-pointer flex items-center justify-between transition-colors ${
-                      isSaved ? 'bg-amber-50/60 border-terracotta-400' : 'bg-white border-cream-200 hover:border-terracotta-200'
-                    }`}
-                  >
-                    <div>
-                      <Typography variant="body1" className="font-serif font-medium text-earth-900">
-                        {list.name}
-                      </Typography>
-                      <Typography variant="caption" className="text-earth-500">
-                        {itemCount} articles
-                      </Typography>
+              return (
+                <ListItem key={list.id} className="p-0 mb-2">
+                  <motion.div whileHover={{ scale: 1.01 }} className="w-full">
+                    <div
+                      onClick={() => {
+                        if (targetPost) {
+                          handleToggleItem(list.id);
+                        } else {
+                          handleNavigateToList(list.id);
+                        }
+                      }}
+                      className={`p-3 rounded-xl border cursor-pointer flex items-center justify-between transition-colors ${
+                        isSaved ? 'bg-amber-50/60 border-terracotta-400' : 'bg-white border-cream-200 hover:border-terracotta-200'
+                      }`}
+                    >
+                      <div className="flex-1 mr-2 overflow-hidden">
+                        <Typography variant="body1" className="font-serif font-medium text-earth-900 truncate">
+                          {list.name}
+                        </Typography>
+                        <Typography variant="caption" className="text-earth-500">
+                          {itemCount} {t.lists.articlesCount}
+                        </Typography>
+                      </div>
+
+                      {targetPost ? (
+                        <div className="flex items-center gap-1">
+                          <Tooltip title={locale === 'fr' ? 'Voir la collection' : 'View collection'}>
+                            <IconButton
+                              size="small"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleNavigateToList(list.id);
+                              }}
+                              sx={{ color: '#8C776D', '&:hover': { color: '#C88A79' } }}
+                            >
+                              <OpenInNewRoundedIcon fontSize="small" />
+                            </IconButton>
+                          </Tooltip>
+                          <Checkbox checked={isSaved} sx={{ color: '#C88A79', '&.Mui-checked': { color: '#C88A79' } }} />
+                        </div>
+                      ) : (
+                        <ArrowForwardRoundedIcon sx={{ color: '#C88A79', fontSize: 20 }} />
+                      )}
                     </div>
-                    {targetPost && <Checkbox checked={isSaved} sx={{ color: '#C88A79', '&.Mui-checked': { color: '#C88A79' } }} />}
-                  </div>
-                </motion.div>
-              </ListItem>
-            );
-          })}
-        </List>
+                  </motion.div>
+                </ListItem>
+              );
+            })}
+          </List>
+        )}
       </Box>
 
       <Divider className="my-2" />
@@ -121,10 +185,10 @@ export function BookmarkDrawer({ open, onClose, targetPost }: BookmarkDrawerProp
           />
           <div className="flex gap-2">
             <Button fullWidth variant="contained" size="small" type="submit" sx={{ bgcolor: '#C88A79', '&:hover': { bgcolor: '#A66E5E' } }}>
-              Save
+              {t.lists.save}
             </Button>
             <Button fullWidth variant="outlined" size="small" onClick={() => setIsCreating(false)}>
-              Cancel
+              {t.lists.cancel}
             </Button>
           </div>
         </form>

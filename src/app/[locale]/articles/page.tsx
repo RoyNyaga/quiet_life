@@ -5,13 +5,17 @@ import { useSearchParams } from 'next/navigation';
 import { Container, Typography, TextField, InputAdornment, Chip, Select, MenuItem, FormControl, InputLabel, Box } from '@mui/material';
 import SearchIcon from '@mui/icons-material/Search';
 import { useApp } from '@/lib/store';
+import { usePosts } from '@/features/posts';
+import { useCategories } from '@/features/categories';
 import { getLocalizedField, DICTIONARY } from '@/lib/i18n';
 import { ArticleCard } from '@/components/article/ArticleCard';
 
 function ArticlesContent() {
   const searchParams = useSearchParams();
   const initialCat = searchParams.get('category');
-  const { locale, posts, categories } = useApp();
+  const { locale } = useApp();
+  const { data: posts = [], isLoading } = usePosts();
+  const { data: categories = [] } = useCategories();
   const t = DICTIONARY[locale];
 
   const [selectedCategory, setSelectedCategory] = useState<string>(initialCat || 'all');

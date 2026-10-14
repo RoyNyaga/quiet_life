@@ -13,11 +13,15 @@ import MenuBookIcon from '@mui/icons-material/MenuBook';
 import CategoryIcon from '@mui/icons-material/Category';
 import { motion } from 'framer-motion';
 import { useApp } from '@/lib/store';
+import { usePosts } from '@/features/posts';
+import { useCategories } from '@/features/categories';
 import { getLocalizedField, DICTIONARY } from '@/lib/i18n';
 import { ArticleCard } from '@/components/article/ArticleCard';
 
 export default function HomePage() {
-  const { locale, posts, categories } = useApp();
+  const { locale } = useApp();
+  const { data: posts = [] } = usePosts();
+  const { data: categories = [] } = useCategories();
   const t = DICTIONARY[locale];
 
   const featuredPost = posts[0];

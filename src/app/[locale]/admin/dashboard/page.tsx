@@ -9,9 +9,15 @@ import MarkEmailReadIcon from '@mui/icons-material/MarkEmailRead';
 import AddIcon from '@mui/icons-material/Add';
 import { DICTIONARY } from '@/lib/i18n';
 import { useApp } from '@/lib/store';
+import { useAdminPosts } from '@/features/posts';
+import { useCategories } from '@/features/categories';
+import { useSubscriptions } from '@/features/subscriptions';
 
 export default function AdminDashboardPage() {
-  const { posts, subscriptions, categories, locale } = useApp();
+  const { locale } = useApp();
+  const { data: posts = [] } = useAdminPosts();
+  const { data: categories = [] } = useCategories();
+  const { data: subscriptions = [] } = useSubscriptions();
   const t = DICTIONARY[locale]?.admin || DICTIONARY.en.admin;
 
   const totalViews = posts.reduce((sum, p) => sum + p.views_count, 0);

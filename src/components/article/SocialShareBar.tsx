@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { IconButton, Tooltip, Snackbar, Alert, Box, Chip, Typography } from '@mui/material';
+import { IconButton, Button, Tooltip, Snackbar, Alert, Box, Chip, Typography } from '@mui/material';
 import WhatsAppIcon from '@mui/icons-material/WhatsApp';
 import FacebookIcon from '@mui/icons-material/Facebook';
 import ContentCopyIcon from '@mui/icons-material/ContentCopy';
@@ -11,7 +11,9 @@ import FavoriteIcon from '@mui/icons-material/Favorite';
 import LanguageIcon from '@mui/icons-material/Language';
 import { Post, Locale } from '@/types/database';
 import { useApp } from '@/lib/store';
-import { getLocalizedField } from '@/lib/i18n';
+import { useUserLikes, useToggleLike } from '@/features/likes';
+import { useReadingListItems } from '@/features/readingLists';
+import { getLocalizedField, DICTIONARY } from '@/lib/i18n';
 import { BookmarkDrawer } from '../drawers/BookmarkDrawer';
 
 interface SocialShareBarProps {
@@ -19,7 +21,11 @@ interface SocialShareBarProps {
 }
 
 export function SocialShareBar({ post }: SocialShareBarProps) {
-  const { locale, readingListItems, togglePostLike } = useApp();
+  const { locale, user, openAuthModal } = useApp();
+  const { isLiked } = useUserLikes(user?.id);
+  const toggleLikeMutation = useToggleLike(user?.id);
+  const { data: readingListItems = [] } = useReadingListItems(user?.id);
+  const t = DICTIONARY[locale];
   const [bookmarkOpen, setBookmarkOpen] = useState(false);
   const [toastMsg, setToastMsg] = useState('');
   const [shareLocale, setShareLocale] = useState<Locale>(locale);
@@ -50,16 +56,43 @@ export function SocialShareBar({ post }: SocialShareBarProps) {
     }
   };
 
-  const isSaved = readingListItems.some(i => i.post_id === post.id);
+  const hasLiked = user ? isLiked(post.id) : false;
+  const isSaved = user ? readingListItems.some(i => i.post_id === post.id) : false;
+
+  const handleLike = () => {
+    if (!user) {
+      openAuthModal('signin', t.lists.authPromptLike);
+      return;
+    }
+    toggleLikeMutation.mutate({ postId: post.id, nextLiked: !hasLiked });
+  };
 
   return (
     <>
       <div className="flex flex-wrap items-center gap-3">
         <Box className="flex items-center gap-1.5 p-1.5 rounded-2xl bg-white border border-cream-200 shadow-sm w-fit">
-          <Tooltip title="Like Article">
-            <IconButton onClick={() => togglePostLike(post.id)} color={post.user_has_liked ? 'error' : 'default'} size="small">
-              <FavoriteIcon />
-            </IconButton>
+          <Tooltip title={`${post.likes_count ?? 0} ${locale === 'fr' ? 'j’aime' : 'likes'}`}>
+            <Button
+              onClick={handleLike}
+              size="small"
+              startIcon={<FavoriteIcon sx={{ color: hasLiked ? '#E25B45' : '#8C776D', fontSize: '1.15rem' }} />}
+              sx={{
+                minWidth: 'auto',
+                px: 1.5,
+                py: 0.5,
+                borderRadius: '12px',
+                color: hasLiked ? '#E25B45' : '#5C4438',
+                fontWeight: 700,
+                fontSize: '0.85rem',
+                bgcolor: hasLiked ? 'rgba(226, 91, 69, 0.08)' : 'transparent',
+                '&:hover': {
+                  bgcolor: hasLiked ? 'rgba(226, 91, 69, 0.15)' : 'rgba(200, 138, 121, 0.08)',
+                },
+                textTransform: 'none',
+              }}
+            >
+              {post.likes_count ?? 0}
+            </Button>
           </Tooltip>
 
           <Tooltip title={`Share on WhatsApp (${shareLocale.toUpperCase()})`}>
@@ -80,8 +113,18 @@ export function SocialShareBar({ post }: SocialShareBarProps) {
             </IconButton>
           </Tooltip>
 
-          <Tooltip title="Save to Reading List">
-            <IconButton onClick={() => setBookmarkOpen(true)} sx={{ color: isSaved ? '#C88A79' : '#5C4438' }} size="small">
+          <Tooltip title={t.article.saveToList}>
+            <IconButton
+              onClick={() => {
+                if (!user) {
+                  openAuthModal('signin', t.lists.authPromptReadingList);
+                } else {
+                  setBookmarkOpen(true);
+                }
+              }}
+              sx={{ color: isSaved ? '#C88A79' : '#5C4438' }}
+              size="small"
+            >
               {isSaved ? <BookmarkIcon /> : <BookmarkBorderIcon />}
             </IconButton>
           </Tooltip>

@@ -22,6 +22,7 @@ export interface Category {
   description_fr?: string | null;
   icon?: string | null;
   created_at: string;
+  posts_count?: number;
 }
 
 export interface Tag {
@@ -55,7 +56,7 @@ export interface Post {
   categories?: Category | null;
   profiles?: Profile | null;
   post_tags?: { tags: Tag }[];
-  likes_count?: number;
+  likes_count: number;
   user_has_liked?: boolean;
 }
 
@@ -101,3 +102,12 @@ export interface Subscription {
   status: SubscriptionStatus;
   created_at: string;
 }
+
+export interface PostLike {
+  id: string;
+  post_id: string;
+  user_id: string;
+  session_identifier?: string | null;
+  created_at: string;
+}
+

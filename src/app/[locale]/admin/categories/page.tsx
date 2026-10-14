@@ -1,6 +1,7 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
+import Link from 'next/link';
 import {
   Typography,
   Button,
@@ -18,6 +19,7 @@ import {
   DialogContent,
   DialogActions,
   MenuItem,
+  Tooltip,
 } from '@mui/material';
 import AddIcon from '@mui/icons-material/Add';
 import EditIcon from '@mui/icons-material/Edit';
@@ -33,9 +35,13 @@ import BoltIcon from '@mui/icons-material/Bolt';
 import CategoryIcon from '@mui/icons-material/Category';
 import CheckIcon from '@mui/icons-material/Check';
 import CloseIcon from '@mui/icons-material/Close';
+import ArticleIcon from '@mui/icons-material/Article';
 import { DICTIONARY } from '@/lib/i18n';
 import { useApp } from '@/lib/store';
 import { Category } from '@/types/database';
+import { useCategories } from '@/features/categories/queries';
+import { useAdminPosts } from '@/features/posts';
+import { useCreateCategory, useUpdateCategory, useDeleteCategory } from '@/features/categories/mutations';
 
 const AVAILABLE_ICONS = [
   { value: 'Home', label: 'Accueil / Home', icon: <HomeIcon fontSize="small" sx={{ color: '#587C64' }} /> },
@@ -49,7 +55,12 @@ const AVAILABLE_ICONS = [
 ];
 
 export default function AdminCategoriesPage() {
-  const { categories, createCategory, updateCategory, deleteCategory, locale } = useApp();
+  const { locale } = useApp();
+  const { data: categories = [] } = useCategories();
+  const { data: posts = [] } = useAdminPosts();
+  const createCategoryMutation = useCreateCategory();
+  const updateCategoryMutation = useUpdateCategory();
+  const deleteCategoryMutation = useDeleteCategory();
   const t = DICTIONARY[locale]?.admin || DICTIONARY.en.admin;
 
   const [modalOpen, setModalOpen] = useState(false);
@@ -61,6 +72,36 @@ export default function AdminCategoriesPage() {
   const [nameFr, setNameFr] = useState('');
   const [slug, setSlug] = useState('');
   const [icon, setIcon] = useState('Spa');
+
+  const isSaving = createCategoryMutation.isPending || updateCategoryMutation.isPending;
+  const isDeleting = deleteCategoryMutation.isPending;
+
+  // Post counts map per category
+  const postCountsMap = useMemo(() => {
+    const map = new Map<string, { total: number; published: number; draft: number }>();
+    for (const post of posts) {
+      if (post.category_id) {
+        const current = map.get(post.category_id) || { total: 0, published: 0, draft: 0 };
+        current.total += 1;
+        if (post.status === 'published') {
+          current.published += 1;
+        } else if (post.status === 'draft') {
+          current.draft += 1;
+        }
+        map.set(post.category_id, current);
+      }
+    }
+    return map;
+  }, [posts]);
+
+  // Aggregate metrics
+  const totalCategorizedPosts = useMemo(() => {
+    return posts.filter(p => Boolean(p.category_id)).length;
+  }, [posts]);
+
+  const uncategorizedPostsCount = useMemo(() => {
+    return posts.filter(p => !p.category_id).length;
+  }, [posts]);
 
   const handleOpenCreate = () => {
     setEditCat(null);
@@ -92,18 +133,21 @@ export default function AdminCategoriesPage() {
     };
 
     if (editCat) {
-      updateCategory(editCat.id, payload);
+      updateCategoryMutation.mutate({ id: editCat.id, ...payload }, {
+        onSuccess: () => setModalOpen(false),
+      });
     } else {
-      createCategory(payload);
+      createCategoryMutation.mutate(payload, {
+        onSuccess: () => setModalOpen(false),
+      });
     }
-
-    setModalOpen(false);
   };
 
   const handleConfirmDelete = () => {
     if (deleteConfirmCat) {
-      deleteCategory(deleteConfirmCat.id);
-      setDeleteConfirmCat(null);
+      deleteCategoryMutation.mutate(deleteConfirmCat.id, {
+        onSuccess: () => setDeleteConfirmCat(null),
+      });
     }
   };
 
@@ -144,6 +188,51 @@ export default function AdminCategoriesPage() {
         </Button>
       </div>
 
+      {/* Metrics Row */}
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+        <Box className="p-5 rounded-2xl bg-white border border-cream-200 shadow-sm flex items-center justify-between">
+          <div>
+            <Typography variant="caption" className="text-earth-500 font-bold uppercase tracking-wider block">
+              {t.categories}
+            </Typography>
+            <Typography variant="h5" className="font-serif font-bold text-earth-900 mt-1">
+              {categories.length}
+            </Typography>
+          </div>
+          <div className="w-12 h-12 rounded-xl bg-cream-100 flex items-center justify-center text-earth-700">
+            <CategoryIcon />
+          </div>
+        </Box>
+
+        <Box className="p-5 rounded-2xl bg-white border border-cream-200 shadow-sm flex items-center justify-between">
+          <div>
+            <Typography variant="caption" className="text-earth-500 font-bold uppercase tracking-wider block">
+              {t.categorizedArticles || (locale === 'fr' ? 'Articles Catégorisés' : 'Categorized Articles')}
+            </Typography>
+            <Typography variant="h5" className="font-serif font-bold text-earth-900 mt-1">
+              {totalCategorizedPosts}
+            </Typography>
+          </div>
+          <div className="w-12 h-12 rounded-xl bg-sage-50 flex items-center justify-center text-sage-700 border border-sage-200">
+            <ArticleIcon />
+          </div>
+        </Box>
+
+        <Box className="p-5 rounded-2xl bg-white border border-cream-200 shadow-sm flex items-center justify-between">
+          <div>
+            <Typography variant="caption" className="text-earth-500 font-bold uppercase tracking-wider block">
+              {t.uncategorizedArticles || (locale === 'fr' ? 'Articles Sans Catégorie' : 'Uncategorized Articles')}
+            </Typography>
+            <Typography variant="h5" className={`font-serif font-bold mt-1 ${uncategorizedPostsCount > 0 ? 'text-amber-700' : 'text-earth-900'}`}>
+              {uncategorizedPostsCount}
+            </Typography>
+          </div>
+          <div className={`w-12 h-12 rounded-xl flex items-center justify-center ${uncategorizedPostsCount > 0 ? 'bg-amber-50 text-amber-700 border border-amber-200' : 'bg-cream-100 text-earth-700'}`}>
+            <WarningAmberIcon />
+          </div>
+        </Box>
+      </div>
+
       {/* Categories Table */}
       <Box className="p-6 rounded-3xl bg-white border border-cream-200 shadow-sm">
         <TableContainer>
@@ -154,40 +243,73 @@ export default function AdminCategoriesPage() {
                 <TableCell className="font-bold">{t.categoryNameFr}</TableCell>
                 <TableCell className="font-bold">{t.slug}</TableCell>
                 <TableCell className="font-bold">Icône</TableCell>
+                <TableCell className="font-bold">{t.postsCount || (locale === 'fr' ? 'Articles' : 'Posts')}</TableCell>
                 <TableCell className="font-bold text-right">{t.actions}</TableCell>
               </TableRow>
             </TableHead>
             <TableBody>
-              {categories.map(cat => (
-                <TableRow key={cat.id} hover>
-                  <TableCell className="font-serif font-semibold text-earth-900">{cat.name_en}</TableCell>
-                  <TableCell>{cat.name_fr}</TableCell>
-                  <TableCell className="text-earth-500 font-mono text-xs">{cat.slug}</TableCell>
-                  <TableCell>
-                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                      <div className="w-7 h-7 rounded-lg bg-cream-100 flex items-center justify-center">
-                        {renderCategoryIcon(cat.icon)}
-                      </div>
-                      <Typography variant="caption" className="text-earth-600 font-mono text-xs">
-                        {cat.icon || 'Spa'}
-                      </Typography>
-                    </Box>
-                  </TableCell>
-                  <TableCell className="text-right">
-                    <IconButton onClick={() => handleOpenEdit(cat)} size="small" aria-label="edit category">
-                      <EditIcon />
-                    </IconButton>
-                    <IconButton
-                      onClick={() => setDeleteConfirmCat(cat)}
-                      size="small"
-                      color="error"
-                      aria-label="delete category"
-                    >
-                      <DeleteIcon />
-                    </IconButton>
-                  </TableCell>
-                </TableRow>
-              ))}
+              {categories.map(cat => {
+                const stats = postCountsMap.get(cat.id);
+                const totalPosts = stats ? stats.total : (cat.posts_count ?? 0);
+                const draftPosts = stats ? stats.draft : 0;
+
+                return (
+                  <TableRow key={cat.id} hover>
+                    <TableCell className="font-serif font-semibold text-earth-900">{cat.name_en}</TableCell>
+                    <TableCell>{cat.name_fr}</TableCell>
+                    <TableCell className="text-earth-500 font-mono text-xs">{cat.slug}</TableCell>
+                    <TableCell>
+                      <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                        <div className="w-7 h-7 rounded-lg bg-cream-100 flex items-center justify-center">
+                          {renderCategoryIcon(cat.icon)}
+                        </div>
+                        <Typography variant="caption" className="text-earth-600 font-mono text-xs">
+                          {cat.icon || 'Spa'}
+                        </Typography>
+                      </Box>
+                    </TableCell>
+                    <TableCell>
+                      <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                        <Link
+                          href={`/${locale}/admin/posts`}
+                          className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold transition-all hover:opacity-85 shadow-none"
+                          style={{
+                            backgroundColor: totalPosts > 0 ? '#EAEFEA' : '#F6F3EE',
+                            color: totalPosts > 0 ? '#2E4C36' : '#8C7A70',
+                            border: `1px solid ${totalPosts > 0 ? '#C4D6C7' : '#E8E2DA'}`,
+                            textDecoration: 'none',
+                          }}
+                        >
+                          <ArticleIcon sx={{ fontSize: 15, color: totalPosts > 0 ? '#587C64' : '#A89990' }} />
+                          <span>
+                            {totalPosts} {totalPosts === 1 ? (locale === 'fr' ? 'article' : 'post') : (locale === 'fr' ? 'articles' : 'posts')}
+                          </span>
+                        </Link>
+                        {draftPosts > 0 && (
+                          <Tooltip title={locale === 'fr' ? `${draftPosts} brouillon(s)` : `${draftPosts} draft(s)`} arrow>
+                            <span className="px-2 py-0.5 rounded-md text-[11px] font-semibold bg-amber-50 text-amber-800 border border-amber-200">
+                              {draftPosts} {locale === 'fr' ? 'br.' : 'draft'}
+                            </span>
+                          </Tooltip>
+                        )}
+                      </Box>
+                    </TableCell>
+                    <TableCell className="text-right">
+                      <IconButton onClick={() => handleOpenEdit(cat)} size="small" aria-label="edit category">
+                        <EditIcon />
+                      </IconButton>
+                      <IconButton
+                        onClick={() => setDeleteConfirmCat(cat)}
+                        size="small"
+                        color="error"
+                        aria-label="delete category"
+                      >
+                        <DeleteIcon />
+                      </IconButton>
+                    </TableCell>
+                  </TableRow>
+                );
+              })}
             </TableBody>
           </Table>
         </TableContainer>
@@ -222,6 +344,33 @@ export default function AdminCategoriesPage() {
               ? `Êtes-vous certain de vouloir supprimer la catégorie "${deleteConfirmCat?.name_fr || deleteConfirmCat?.name_en}" ? Cette action est irréversible.`
               : `Are you sure you want to delete the category "${deleteConfirmCat?.name_en}"? This action cannot be undone.`}
           </Typography>
+          {(() => {
+            const deleteCatPostCount = deleteConfirmCat
+              ? (postCountsMap.get(deleteConfirmCat.id)?.total ?? deleteConfirmCat.posts_count ?? 0)
+              : 0;
+            if (deleteCatPostCount <= 0) return null;
+            return (
+              <Box
+                sx={{
+                  mt: 2,
+                  p: 2,
+                  borderRadius: '12px',
+                  bgcolor: '#FEF3C7',
+                  border: '1px solid #FDE68A',
+                  display: 'flex',
+                  alignItems: 'start',
+                  gap: 1.5,
+                }}
+              >
+                <WarningAmberIcon fontSize="small" sx={{ color: '#D97706', mt: 0.2 }} />
+                <Typography variant="body2" sx={{ color: '#92400E', fontSize: '0.8125rem', lineHeight: 1.4 }}>
+                  {locale === 'fr'
+                    ? `Attention : Cette catégorie est actuellement associée à ${deleteCatPostCount} article(s). En la supprimant, ces articles deviendront non catégorisés.`
+                    : `Warning: This category is currently associated with ${deleteCatPostCount} post(s). Deleting it will leave those articles uncategorized.`}
+                </Typography>
+              </Box>
+            );
+          })()}
         </DialogContent>
         <DialogActions className="p-3 pt-2 gap-2">
           <Button onClick={() => setDeleteConfirmCat(null)} sx={{ color: '#5C4438' }}>
@@ -231,6 +380,7 @@ export default function AdminCategoriesPage() {
             variant="contained"
             color="error"
             onClick={handleConfirmDelete}
+            disabled={isDeleting}
             sx={{
               borderRadius: 3,
               fontWeight: 600,
@@ -456,6 +606,7 @@ export default function AdminCategoriesPage() {
             <Button
               type="submit"
               variant="contained"
+              disabled={isSaving}
               startIcon={<CheckIcon />}
               sx={{
                 bgcolor: '#C88A79',

@@ -20,11 +20,15 @@ import {
   SelectChangeEvent,
   FormControlLabel,
   Checkbox,
+  CircularProgress,
 } from '@mui/material';
 import SaveIcon from '@mui/icons-material/Save';
 import VisibilityIcon from '@mui/icons-material/Visibility';
 import ArrowBackIcon from '@mui/icons-material/ArrowBack';
 import { useApp } from '@/lib/store';
+import { useAdminPosts, useCreatePost, useUpdatePost } from '@/features/posts';
+import { useCategories } from '@/features/categories';
+import { useTags } from '@/features/tags';
 import { MarkdownRenderer } from '@/components/article/MarkdownRenderer';
 import { ImageUploader } from '@/components/admin/ImageUploader';
 import { MarkdownEditor } from '@/components/admin/MarkdownEditor';
@@ -35,7 +39,12 @@ function PostEditorContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const editId = searchParams.get('edit');
-  const { posts, categories, tags, createPost, updatePost, locale } = useApp();
+  const { locale } = useApp();
+  const { data: posts = [] } = useAdminPosts();
+  const { data: categories = [] } = useCategories();
+  const { data: tags = [] } = useTags();
+  const createPostMutation = useCreatePost();
+  const updatePostMutation = useUpdatePost();
   const t = DICTIONARY[locale]?.admin || DICTIONARY.en.admin;
 
   const [activeLangTab, setActiveLangTab] = useState<0 | 1>(0);
@@ -125,8 +134,11 @@ function PostEditorContent() {
     setSelectedTagIds(typeof value === 'string' ? value.split(',') : value);
   };
 
-  const handleSave = (e?: React.FormEvent) => {
+  const isSaving = createPostMutation.isPending || updatePostMutation.isPending;
+
+  const handleSave = async (e?: React.FormEvent) => {
     if (e) e.preventDefault();
+    if (isSaving) return;
     if (!titleEn.trim() || !contentEn.trim()) {
       alert('Please provide at least an English title and markdown content.');
       return;
@@ -153,12 +165,12 @@ function PostEditorContent() {
     };
 
     if (editId) {
-      updatePost(editId, postPayload);
+      await updatePostMutation.mutateAsync({ id: editId, ...postPayload });
+      router.push(`/${locale}/admin/posts`);
     } else {
-      createPost(postPayload);
+      await createPostMutation.mutateAsync(postPayload);
+      router.push(`/${locale}/admin/posts`);
     }
-
-    router.push(`/${locale}/admin/posts`);
   };
 
   return (
@@ -194,7 +206,8 @@ function PostEditorContent() {
           </Button>
           <Button
             variant="contained"
-            startIcon={<SaveIcon />}
+            disabled={isSaving}
+            startIcon={isSaving ? <CircularProgress size={18} color="inherit" /> : <SaveIcon />}
             onClick={handleSave}
             sx={{
               bgcolor: '#C88A79',
@@ -204,7 +217,7 @@ function PostEditorContent() {
               px: 3,
             }}
           >
-            {editId ? t.updateArticle : t.saveAndPublish}
+            {isSaving ? (t.saving || (locale === 'fr' ? 'Enregistrement...' : 'Saving...')) : t.save}
           </Button>
         </div>
       </div>

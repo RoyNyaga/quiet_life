@@ -6,6 +6,8 @@ import SearchIcon from '@mui/icons-material/Search';
 import CloseIcon from '@mui/icons-material/Close';
 import Link from 'next/link';
 import { useApp } from '@/lib/store';
+import { usePosts } from '@/features/posts';
+import { useCategories } from '@/features/categories';
 import { getLocalizedField, DICTIONARY } from '@/lib/i18n';
 
 interface GlobalSearchDrawerProps {
@@ -14,7 +16,9 @@ interface GlobalSearchDrawerProps {
 }
 
 export function GlobalSearchDrawer({ open, onClose }: GlobalSearchDrawerProps) {
-  const { posts, categories, locale } = useApp();
+  const { locale } = useApp();
+  const { data: posts = [] } = usePosts();
+  const { data: categories = [] } = useCategories();
   const t = DICTIONARY[locale];
   const [query, setQuery] = useState('');
 

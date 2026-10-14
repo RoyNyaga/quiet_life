@@ -2,50 +2,55 @@
 
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { Dialog, DialogContent, Typography, TextField, Button, IconButton, Chip, Box, Avatar, LinearProgress, CircularProgress } from '@mui/material';
+import { Dialog, DialogContent, Typography, TextField, Button, IconButton, Chip, Box, LinearProgress, CircularProgress } from '@mui/material';
 import CloseIcon from '@mui/icons-material/Close';
 import CheckCircleIcon from '@mui/icons-material/CheckCircle';
 import ArrowBackIcon from '@mui/icons-material/ArrowBack';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useApp } from '@/lib/store';
 import { getLocalizedField, DICTIONARY } from '@/lib/i18n';
-import { createClient } from '@/lib/supabase/client';
-
-const AVATAR_PRESETS = [
-  'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=300&q=80',
-  'https://images.unsplash.com/photo-1517841905240-472988babdf9?auto=format&fit=crop&w=300&q=80',
-  'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&w=300&q=80',
-  'https://images.unsplash.com/photo-1494790108377-be9c29b29330?auto=format&fit=crop&w=300&q=80',
-];
+import { useSignIn, useSignUp } from '@/features/auth/mutations';
+import { useCategories } from '@/features/categories';
+import { getErrorMessage } from '@/lib/query/errors';
+import { AvatarUploader } from '@/components/auth/AvatarUploader';
 
 interface AuthModalProps {
   open: boolean;
   onClose: () => void;
   initialMode?: 'signin' | 'signup';
+  promptMessage?: string;
 }
 
-export function AuthModal({ open, onClose, initialMode = 'signin' }: AuthModalProps) {
+export function AuthModal({ open, onClose, initialMode = 'signin', promptMessage }: AuthModalProps) {
   const router = useRouter();
-  const { locale, categories, setUser } = useApp();
+  const { locale, setNotification } = useApp();
+  const { data: categories = [] } = useCategories();
   const t = DICTIONARY[locale];
   const [mode, setMode] = useState<'signin' | 'signup'>(initialMode);
   const [step, setStep] = useState<1 | 2 | 3>(1);
+
+  // React Query Auth Mutations
+  const signInMutation = useSignIn();
+  const signUpMutation = useSignUp();
+  const isSubmitting = signInMutation.isPending || signUpMutation.isPending;
 
   // Form State
   const [fullName, setFullName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
-  const [avatarUrl, setAvatarUrl] = useState(AVATAR_PRESETS[0]);
+  const [avatarUrl, setAvatarUrl] = useState('');
   const [selectedCategoryIds, setSelectedCategoryIds] = useState<string[]>([]);
   const [errorMsg, setErrorMsg] = useState('');
-  const [loading, setLoading] = useState(false);
 
   const handleSuccessAuth = (role: 'admin' | 'user') => {
-    setLoading(false);
     onClose();
     if (role === 'admin') {
       router.push(`/${locale}/admin/dashboard`);
+      router.refresh();
+    } else {
+      router.push(`/${locale}/profile`);
+      router.refresh();
     }
   };
 
@@ -80,145 +85,49 @@ export function AuthModal({ open, onClose, initialMode = 'signin' }: AuthModalPr
 
   const handleCompleteRegistration = async () => {
     setErrorMsg('');
-    setLoading(true);
-    const supabase = createClient();
+    try {
+      const result = await signUpMutation.mutateAsync({
+        email: email.trim(),
+        password,
+        fullName: fullName.trim() || 'Mindful Reader',
+        avatarUrl: avatarUrl || null,
+      });
 
-    if (supabase) {
-      try {
-        const { data, error } = await supabase.auth.signUp({
-          email: email.trim(),
-          password,
-          options: {
-            data: {
-              full_name: fullName || 'Mindful Reader',
-              avatar_url: avatarUrl,
-            },
-          },
+      if (result.needsEmailConfirmation) {
+        setNotification({
+          type: 'info',
+          message: t.auth.checkEmail,
         });
-
-        if (error) {
-          setErrorMsg(error.message);
-          setLoading(false);
-          return;
-        }
-
-        if (data.user) {
-          const userRole = email.trim().toLowerCase() === 'nyagaandreroy@gmail.com' ? 'admin' : 'user';
-          setUser({
-            id: data.user.id,
-            full_name: fullName || 'Mindful Reader',
-            avatar_url: avatarUrl,
-            role: userRole,
-            onboarding_completed: true,
-            created_at: data.user.created_at,
-            updated_at: new Date().toISOString(),
-          });
-          handleSuccessAuth(userRole);
-          return;
-        }
-      } catch (err: any) {
-        console.warn('Signup error:', err);
+        onClose();
+        return;
       }
-    }
 
-    // Local fallback
-    const fallbackRole = email.trim().toLowerCase() === 'nyagaandreroy@gmail.com' ? 'admin' : 'user';
-    setUser({
-      id: `user-${Date.now()}`,
-      full_name: fullName || 'Mindful Reader',
-      avatar_url: avatarUrl,
-      role: fallbackRole,
-      onboarding_completed: true,
-      created_at: new Date().toISOString(),
-      updated_at: new Date().toISOString(),
-    });
-    handleSuccessAuth(fallbackRole);
+      if (result.profile) {
+        handleSuccessAuth(result.profile.role);
+      }
+    } catch (err: unknown) {
+      console.warn('Signup error:', err);
+      setErrorMsg(getErrorMessage(err, locale));
+    }
   };
 
   const handleLoginSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setErrorMsg('');
     if (!email || !password) {
-      setErrorMsg('Please enter email and password.');
+      setErrorMsg(t.errors.invalidCredentials);
       return;
     }
 
-    setLoading(true);
-    const supabase = createClient();
-
-    if (supabase) {
-      try {
-        const { data, error } = await supabase.auth.signInWithPassword({
-          email: email.trim(),
-          password,
-        });
-
-        if (error) {
-          // If remote DB hasn't been migrated yet, allow admin testing locally
-          if (email.trim().toLowerCase() === 'nyagaandreroy@gmail.com' && password === '123456') {
-            setUser({
-              id: 'admin-nyaga',
-              full_name: 'Andre Roy Nyaga',
-              avatar_url: avatarUrl,
-              role: 'admin',
-              onboarding_completed: true,
-              created_at: new Date().toISOString(),
-              updated_at: new Date().toISOString(),
-            });
-            handleSuccessAuth('admin');
-            return;
-          }
-          setErrorMsg(error.message);
-          setLoading(false);
-          return;
-        }
-
-        if (data.user) {
-          const { data: profile } = await supabase
-            .from('profiles')
-            .select('*')
-            .eq('id', data.user.id)
-            .single();
-
-          const userRole =
-            (profile?.role === 'admin' || email.trim().toLowerCase() === 'nyagaandreroy@gmail.com')
-              ? 'admin'
-              : (profile?.role || 'user');
-
-          const activeUser = {
-            id: data.user.id,
-            full_name: profile?.full_name || data.user.user_metadata?.full_name || 'Andre Roy Nyaga',
-            avatar_url: profile?.avatar_url || data.user.user_metadata?.avatar_url || avatarUrl,
-            role: userRole,
-            onboarding_completed: true,
-            created_at: data.user.created_at,
-            updated_at: new Date().toISOString(),
-          };
-
-          setUser(activeUser);
-          handleSuccessAuth(userRole);
-          return;
-        }
-      } catch (err: any) {
-        console.warn('Login error:', err);
-      }
-    }
-
-    // Local fallback
-    if (email.trim().toLowerCase() === 'nyagaandreroy@gmail.com' && password === '123456') {
-      setUser({
-        id: 'admin-nyaga',
-        full_name: 'Andre Roy Nyaga',
-        avatar_url: avatarUrl,
-        role: 'admin',
-        onboarding_completed: true,
-        created_at: new Date().toISOString(),
-        updated_at: new Date().toISOString(),
+    try {
+      const result = await signInMutation.mutateAsync({
+        email: email.trim(),
+        password,
       });
-      handleSuccessAuth('admin');
-    } else {
-      setErrorMsg('Invalid email or password.');
-      setLoading(false);
+      handleSuccessAuth(result.profile.role);
+    } catch (err: unknown) {
+      console.warn('Login error:', err);
+      setErrorMsg(getErrorMessage(err, locale));
     }
   };
 
@@ -303,6 +212,14 @@ export function AuthModal({ open, onClose, initialMode = 'signin' }: AuthModalPr
                 Welcome back to your mindful reading space.
               </Typography>
 
+              {promptMessage && (
+                <Box className="p-3 mb-4 rounded-xl bg-amber-50/90 border border-amber-200/90">
+                  <Typography variant="body2" className="text-amber-900 font-medium text-xs sm:text-sm">
+                    {promptMessage}
+                  </Typography>
+                </Box>
+              )}
+
               {errorMsg && (
                 <Box className="p-3 mb-4 rounded-xl bg-red-50 border border-red-200">
                   <Typography variant="caption" className="text-red-700 font-medium block">
@@ -322,7 +239,7 @@ export function AuthModal({ open, onClose, initialMode = 'signin' }: AuthModalPr
                     placeholder="name@example.com"
                     value={email}
                     onChange={e => setEmail(e.target.value)}
-                    disabled={loading}
+                    disabled={isSubmitting}
                     sx={inputStyles}
                   />
                 </div>
@@ -337,7 +254,7 @@ export function AuthModal({ open, onClose, initialMode = 'signin' }: AuthModalPr
                     placeholder="••••••••"
                     value={password}
                     onChange={e => setPassword(e.target.value)}
-                    disabled={loading}
+                    disabled={isSubmitting}
                     sx={inputStyles}
                   />
                 </div>
@@ -347,7 +264,7 @@ export function AuthModal({ open, onClose, initialMode = 'signin' }: AuthModalPr
                   variant="contained"
                   type="submit"
                   size="large"
-                  disabled={loading}
+                  disabled={isSubmitting}
                   sx={{
                     bgcolor: '#C88A79',
                     '&:hover': { bgcolor: '#A66E5E' },
@@ -358,7 +275,7 @@ export function AuthModal({ open, onClose, initialMode = 'signin' }: AuthModalPr
                     fontSize: '0.95rem',
                   }}
                 >
-                  {loading ? <CircularProgress size={24} color="inherit" /> : t.nav.signIn}
+                  {isSubmitting ? <CircularProgress size={24} color="inherit" /> : t.nav.signIn}
                 </Button>
               </form>
 
@@ -386,6 +303,14 @@ export function AuthModal({ open, onClose, initialMode = 'signin' }: AuthModalPr
                   <Typography variant="body2" className="text-earth-600 mb-5">
                     {t.onboarding.step1Subtitle}
                   </Typography>
+
+                  {promptMessage && (
+                    <Box className="p-3 mb-4 rounded-xl bg-amber-50/90 border border-amber-200/90">
+                      <Typography variant="body2" className="text-amber-900 font-medium text-xs sm:text-sm">
+                        {promptMessage}
+                      </Typography>
+                    </Box>
+                  )}
 
                   {errorMsg && (
                     <Box className="p-3 mb-4 rounded-xl bg-red-50 border border-red-200">
@@ -489,47 +414,58 @@ export function AuthModal({ open, onClose, initialMode = 'signin' }: AuthModalPr
               {step === 2 && (
                 <>
                   <Typography variant="h5" className="font-serif font-bold text-earth-900 mb-1">
-                    {t.onboarding.step2Title}
+                    {locale === 'fr' ? 'Photo de profil' : 'Profile Photo'}
                   </Typography>
-                  <Typography variant="body2" className="text-earth-600 mb-5">
-                    {t.onboarding.step2Subtitle}
+                  <Typography variant="body2" className="text-earth-600 mb-3">
+                    {locale === 'fr'
+                      ? 'Téléversez une photo de profil (format 1:1). Elle sera automatiquement recadrée et compressée.'
+                      : 'Upload your profile photo. It will be cropped to a 1:1 square and compressed to WebP.'}
                   </Typography>
 
-                  <div className="grid grid-cols-4 gap-4 mb-6 py-2">
-                    {AVATAR_PRESETS.map((preset, idx) => (
-                      <Avatar
-                        key={idx}
-                        src={preset}
-                        onClick={() => setAvatarUrl(preset)}
-                        sx={{
-                          width: 68,
-                          height: 68,
-                          cursor: 'pointer',
-                          border: avatarUrl === preset ? '3px solid #C88A79' : '2px solid transparent',
-                          boxShadow: avatarUrl === preset ? '0 4px 12px rgba(200, 138, 121, 0.35)' : 'none',
-                          transform: avatarUrl === preset ? 'scale(1.08)' : 'scale(1)',
-                          transition: 'all 0.2s ease',
-                          mx: 'auto',
-                        }}
-                      />
-                    ))}
+                  <AvatarUploader
+                    value={avatarUrl}
+                    onChange={url => setAvatarUrl(url)}
+                    label={locale === 'fr' ? 'Photo de profil' : 'Profile Photo'}
+                    helperText={
+                      locale === 'fr'
+                        ? 'Optionnel. Recadrage carré 1:1 et compression automatique WebP.'
+                        : 'Optional. 1:1 square crop with automatic WebP compression.'
+                    }
+                  />
+
+                  <div className="flex items-center gap-3 mt-5">
+                    <Button
+                      variant="outlined"
+                      size="large"
+                      onClick={() => setStep(1)}
+                      sx={{
+                        color: '#5C4438',
+                        borderColor: '#E8E2DA',
+                        textTransform: 'none',
+                        fontWeight: 600,
+                        borderRadius: 3,
+                        px: 3,
+                        py: 1.3,
+                      }}
+                    >
+                      {locale === 'fr' ? 'Retour' : 'Back'}
+                    </Button>
+                    <Button
+                      fullWidth
+                      variant="contained"
+                      size="large"
+                      onClick={() => setStep(3)}
+                      sx={{
+                        bgcolor: '#C88A79',
+                        '&:hover': { bgcolor: '#A66E5E' },
+                        py: 1.4,
+                        borderRadius: 3,
+                        fontWeight: 700,
+                      }}
+                    >
+                      {t.onboarding.next}
+                    </Button>
                   </div>
-
-                  <Button
-                    fullWidth
-                    variant="contained"
-                    size="large"
-                    onClick={() => setStep(3)}
-                    sx={{
-                      bgcolor: '#C88A79',
-                      '&:hover': { bgcolor: '#A66E5E' },
-                      py: 1.4,
-                      borderRadius: 3,
-                      fontWeight: 700,
-                    }}
-                  >
-                    {t.onboarding.next}
-                  </Button>
                 </>
               )}
 
@@ -579,7 +515,7 @@ export function AuthModal({ open, onClose, initialMode = 'signin' }: AuthModalPr
                     variant="contained"
                     size="large"
                     onClick={handleCompleteRegistration}
-                    disabled={loading}
+                    disabled={isSubmitting}
                     sx={{
                       bgcolor: '#C88A79',
                       '&:hover': { bgcolor: '#A66E5E' },
@@ -589,7 +525,7 @@ export function AuthModal({ open, onClose, initialMode = 'signin' }: AuthModalPr
                       fontSize: '0.95rem',
                     }}
                   >
-                    {loading ? <CircularProgress size={24} color="inherit" /> : t.onboarding.finish}
+                    {isSubmitting ? <CircularProgress size={24} color="inherit" /> : t.onboarding.finish}
                   </Button>
                 </>
               )}

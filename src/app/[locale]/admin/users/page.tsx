@@ -1,31 +1,15 @@
 'use client';
 
-import { useState, useEffect } from 'react';
 import { Typography, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, Chip, Avatar, Box } from '@mui/material';
 import { DICTIONARY } from '@/lib/i18n';
 import { useApp } from '@/lib/store';
-import { createClient } from '@/lib/supabase/client';
+import { useProfiles } from '@/features/profiles';
 import { Profile } from '@/types/database';
 
 export default function AdminUsersPage() {
   const { user, locale } = useApp();
+  const { data: profiles = [], isLoading } = useProfiles();
   const t = DICTIONARY[locale]?.admin || DICTIONARY.en.admin;
-  const [profiles, setProfiles] = useState<Profile[]>([]);
-
-  useEffect(() => {
-    const supabase = createClient();
-    if (supabase) {
-      supabase
-        .from('profiles')
-        .select('*')
-        .order('created_at', { ascending: false })
-        .then(({ data }) => {
-          if (data && data.length > 0) {
-            setProfiles(data);
-          }
-        });
-    }
-  }, []);
 
   // Use fetched profiles or the currently active user
   const displayUsers = profiles.length > 0
@@ -34,7 +18,7 @@ export default function AdminUsersPage() {
       ? [user]
       : [
           {
-            id: 'admin-nyaga',
+            id: '22388a63-3518-45cd-b195-5fb7cdb0f871',
             full_name: 'Andre Roy Nyaga',
             avatar_url: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=400&q=80',
             role: 'admin' as const,

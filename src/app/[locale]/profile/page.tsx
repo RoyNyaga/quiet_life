@@ -57,6 +57,17 @@ import { DICTIONARY, getLocalizedField } from '@/lib/i18n';
 import { ImageUploader } from '@/components/admin/ImageUploader';
 import { createClient } from '@/lib/supabase/client';
 import { ReadingList, Post } from '@/types/database';
+import {
+  useReadingLists,
+  useReadingListItems,
+  useCreateReadingList,
+  useUpdateReadingList,
+  useDeleteReadingList,
+  useRemoveReadingListItem,
+} from '@/features/readingLists';
+import { usePublicPosts } from '@/features/posts';
+import { useCategories } from '@/features/categories';
+import { useUpdateProfile } from '@/features/profiles';
 
 const TAB_KEYS = ['reading-list', 'edit-profile', 'account-security'] as const;
 type TabKey = (typeof TAB_KEYS)[number];
@@ -67,19 +78,17 @@ function ProfileContent() {
   const searchParams = useSearchParams();
   const [, startTransition] = useTransition();
 
-  const {
-    user,
-    updateUserProfile,
-    locale,
-    readingLists,
-    readingListItems,
-    posts,
-    categories,
-    createReadingList,
-    updateReadingList,
-    deleteReadingList,
-    removeReadingListItem,
-  } = useApp();
+  const { user, locale } = useApp();
+  const { data: readingLists = [] } = useReadingLists(user?.id);
+  const { data: readingListItems = [] } = useReadingListItems(user?.id);
+  const { data: posts = [] } = usePublicPosts();
+  const { data: categories = [] } = useCategories();
+
+  const createListMutation = useCreateReadingList(user?.id);
+  const updateListMutation = useUpdateReadingList(user?.id);
+  const deleteListMutation = useDeleteReadingList(user?.id);
+  const removeListItemMutation = useRemoveReadingListItem(user?.id);
+  const updateProfileMutation = useUpdateProfile();
 
   const t = DICTIONARY[locale];
 
@@ -186,13 +195,17 @@ function ProfileContent() {
   }, [readingLists, listSearchQuery]);
 
   // Handle Create List
-  const handleCreateListSubmit = (e: React.FormEvent) => {
+  const handleCreateListSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!newListName.trim()) return;
 
     setIsSubmittingCreate(true);
     try {
-      const created = createReadingList(newListName.trim(), newListDescription.trim(), newListIsPrivate);
+      const created = await createListMutation.mutateAsync({
+        name: newListName.trim(),
+        description: newListDescription.trim(),
+        is_private: newListIsPrivate,
+      });
       setNewListName('');
       setNewListDescription('');
       setNewListIsPrivate(true);
@@ -216,13 +229,14 @@ function ProfileContent() {
   };
 
   // Handle Save Edit
-  const handleEditListSubmit = (e: React.FormEvent) => {
+  const handleEditListSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!editingList || !editName.trim()) return;
 
     setIsSubmittingEdit(true);
     try {
-      updateReadingList(editingList.id, {
+      await updateListMutation.mutateAsync({
+        id: editingList.id,
         name: editName.trim(),
         description: editDescription.trim(),
         is_private: editIsPrivate,
@@ -256,28 +270,40 @@ function ProfileContent() {
   };
 
   // Handle Confirm Delete
-  const handleConfirmDelete = () => {
+  const handleConfirmDelete = async () => {
     if (!listToDelete) return;
     const deletedName = listToDelete.name;
-    deleteReadingList(listToDelete.id);
-    if (selectedList?.id === listToDelete.id) {
-      closeListDrawer();
+    try {
+      await deleteListMutation.mutateAsync(listToDelete.id);
+      if (selectedList?.id === listToDelete.id) {
+        closeListDrawer();
+      }
+      setDeleteDialogOpen(false);
+      setListToDelete(null);
+      showToast(`Collection "${deletedName}" removed.`);
+    } catch {
+      showToast('Failed to delete reading list.', 'error');
     }
-    setDeleteDialogOpen(false);
-    setListToDelete(null);
-    showToast(`Collection "${deletedName}" removed.`);
   };
 
   // Handle Remove Article from List
-  const handleRemoveArticleFromList = (listId: string, postId: string, postTitle: string) => {
-    removeReadingListItem(listId, postId);
-    showToast(`Removed "${postTitle}" from this collection.`);
+  const handleRemoveArticleFromList = async (listId: string, postId: string, postTitle: string) => {
+    try {
+      await removeListItemMutation.mutateAsync({ listId, postId });
+      showToast(`Removed "${postTitle}" from this collection.`);
+    } catch {
+      showToast('Failed to remove article.', 'error');
+    }
   };
 
   // Quick Preset Creators for Empty State
-  const handleCreatePreset = (presetName: string, presetDesc: string) => {
-    createReadingList(presetName, presetDesc, true);
-    showToast(`Created "${presetName}" collection!`);
+  const handleCreatePreset = async (presetName: string, presetDesc: string) => {
+    try {
+      await createListMutation.mutateAsync({ name: presetName, description: presetDesc, is_private: true });
+      showToast(`Created "${presetName}" collection!`);
+    } catch {
+      showToast('Failed to create preset collection.', 'error');
+    }
   };
 
   // -------------------------------------------------------------
@@ -289,9 +315,10 @@ function ProfileContent() {
 
   const handleUpdateProfile = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!user) return;
     setIsSavingProfile(true);
     try {
-      updateUserProfile({ full_name: fullName.trim(), avatar_url: avatarUrl });
+      await updateProfileMutation.mutateAsync({ id: user.id, full_name: fullName.trim(), avatar_url: avatarUrl });
       showToast('Profile information updated successfully!');
     } catch {
       showToast('Error updating profile.', 'error');
@@ -989,13 +1016,13 @@ function ProfileContent() {
           },
         }}
       >
-        <DialogTitle className="flex items-center justify-between pb-2 border-b border-cream-200">
+        <DialogTitle component="div" className="flex items-center justify-between pb-2 border-b border-cream-200">
           <div className="flex items-center gap-2">
             <Avatar sx={{ bgcolor: '#F7EBE8', color: '#C88A79', width: 36, height: 36 }}>
               <BookmarkAddRoundedIcon fontSize="small" />
             </Avatar>
             <div>
-              <Typography variant="h6" className="font-serif font-bold text-earth-900 leading-tight">
+              <Typography variant="h6" component="h2" className="font-serif font-bold text-earth-900 leading-tight">
                 Create Reading List
               </Typography>
               <Typography variant="caption" className="text-earth-500">
@@ -1102,13 +1129,13 @@ function ProfileContent() {
           },
         }}
       >
-        <DialogTitle className="flex items-center justify-between pb-2 border-b border-cream-200">
+        <DialogTitle component="div" className="flex items-center justify-between pb-2 border-b border-cream-200">
           <div className="flex items-center gap-2">
             <Avatar sx={{ bgcolor: '#F7EBE8', color: '#C88A79', width: 36, height: 36 }}>
               <EditRoundedIcon fontSize="small" />
             </Avatar>
             <div>
-              <Typography variant="h6" className="font-serif font-bold text-earth-900 leading-tight">
+              <Typography variant="h6" component="h2" className="font-serif font-bold text-earth-900 leading-tight">
                 Edit Reading List
               </Typography>
               <Typography variant="caption" className="text-earth-500">
@@ -1212,11 +1239,11 @@ function ProfileContent() {
           },
         }}
       >
-        <DialogTitle className="flex items-center gap-3 pb-2">
+        <DialogTitle component="div" className="flex items-center gap-3 pb-2">
           <Avatar sx={{ bgcolor: '#FDECEA', color: '#D32F2F', width: 40, height: 40 }}>
             <WarningAmberRoundedIcon />
           </Avatar>
-          <Typography variant="h6" className="font-serif font-bold text-earth-900">
+          <Typography variant="h6" component="h2" className="font-serif font-bold text-earth-900">
             Delete Collection?
           </Typography>
         </DialogTitle>

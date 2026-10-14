@@ -31,6 +31,8 @@ interface ImageCropModalProps {
   onCropComplete: (uploadedUrl: string, stats: CompressionResult) => void;
   defaultAspectRatio?: AspectRatioType;
   folder?: 'covers' | 'body' | 'avatars';
+  lockAspectRatio?: boolean;
+  title?: string;
 }
 
 const ASPECT_RATIOS: { label: string; value: AspectRatioType; ratio: number }[] = [
@@ -47,8 +49,11 @@ export function ImageCropModal({
   onCropComplete,
   defaultAspectRatio = '16:9',
   folder = 'covers',
+  lockAspectRatio = false,
+  title,
 }: ImageCropModalProps) {
-  const [aspectRatio, setAspectRatio] = useState<AspectRatioType>(defaultAspectRatio);
+  const effectiveDefaultRatio: AspectRatioType = folder === 'avatars' || lockAspectRatio ? '1:1' : defaultAspectRatio;
+  const [aspectRatio, setAspectRatio] = useState<AspectRatioType>(effectiveDefaultRatio);
   const [zoom, setZoom] = useState(1);
   const [offset, setOffset] = useState({ x: 0, y: 0 });
   const [isDragging, setIsDragging] = useState(false);
@@ -211,8 +216,8 @@ export function ImageCropModal({
     setErrorMsg(null);
 
     try {
-      // 1. Offscreen canvas at target output resolution (max 1600px width)
-      const maxOutputWidth = folder === 'covers' ? 1600 : 1200;
+      // 1. Offscreen canvas at target output resolution (max 512px for avatars, 1600px for covers)
+      const maxOutputWidth = folder === 'avatars' ? 512 : (folder === 'covers' ? 1600 : 1200);
       const outputWidth = Math.min(imgElement.naturalWidth, maxOutputWidth);
       const outputHeight = Math.round(outputWidth / targetRatio);
 
@@ -276,9 +281,10 @@ export function ImageCropModal({
 
       onCropComplete(uploadedUrl, compressed);
       onClose();
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error('Error applying crop and upload:', err);
-      setErrorMsg(err.message || 'Failed to crop and upload image');
+      const msg = err instanceof Error ? err.message : 'Failed to crop and upload image';
+      setErrorMsg(msg);
     } finally {
       setIsProcessing(false);
     }
@@ -301,17 +307,19 @@ export function ImageCropModal({
         },
       }}
     >
-      <DialogTitle className="flex items-center justify-between border-b border-cream-200 pb-3">
+      <DialogTitle component="div" className="flex items-center justify-between border-b border-cream-200 pb-3">
         <div className="flex items-center gap-2">
           <div className="p-2 rounded-xl bg-terracotta-100 text-terracotta-700">
             <CropIcon fontSize="small" />
           </div>
           <div>
-            <Typography variant="h6" className="font-serif font-bold text-earth-900 leading-tight">
-              Crop & Optimize Cover Image
+            <Typography variant="h6" component="h2" className="font-serif font-bold text-earth-900 leading-tight">
+              {title || (folder === 'avatars' ? 'Crop & Optimize Profile Photo' : 'Crop & Optimize Cover Image')}
             </Typography>
             <Typography variant="caption" className="text-earth-500">
-              Pan & zoom to fit the frame. WebP compression will be applied automatically.
+              {folder === 'avatars'
+                ? 'Pan & zoom to fit the 1:1 square. WebP compression will be applied automatically.'
+                : 'Pan & zoom to fit the frame. WebP compression will be applied automatically.'}
             </Typography>
           </div>
         </div>
@@ -322,29 +330,45 @@ export function ImageCropModal({
 
       <DialogContent className="p-6 space-y-5">
         {/* Aspect Ratio Presets */}
-        <div className="flex flex-wrap items-center justify-between gap-3 pt-2">
-          <Typography variant="body2" className="font-medium text-earth-700">
-            Target Aspect Ratio:
-          </Typography>
-          <div className="flex flex-wrap gap-2">
-            {ASPECT_RATIOS.map(r => (
-              <Chip
-                key={r.value}
-                label={r.label}
-                clickable
-                onClick={() => setAspectRatio(r.value)}
-                sx={{
-                  bgcolor: aspectRatio === r.value ? '#C88A79' : '#EFEBE6',
-                  color: aspectRatio === r.value ? '#FFFFFF' : '#5C4438',
-                  fontWeight: 600,
-                  '&:hover': {
-                    bgcolor: aspectRatio === r.value ? '#A66E5E' : '#E4DDD4',
-                  },
-                }}
-              />
-            ))}
+        {lockAspectRatio || folder === 'avatars' ? (
+          <div className="flex items-center justify-between gap-3 pt-2">
+            <Typography variant="body2" className="font-medium text-earth-700">
+              Aspect Ratio:
+            </Typography>
+            <Chip
+              label="1:1 (Square Profile Photo)"
+              sx={{
+                bgcolor: '#C88A79',
+                color: '#FFFFFF',
+                fontWeight: 600,
+              }}
+            />
           </div>
-        </div>
+        ) : (
+          <div className="flex flex-wrap items-center justify-between gap-3 pt-2">
+            <Typography variant="body2" className="font-medium text-earth-700">
+              Target Aspect Ratio:
+            </Typography>
+            <div className="flex flex-wrap gap-2">
+              {ASPECT_RATIOS.map(r => (
+                <Chip
+                  key={r.value}
+                  label={r.label}
+                  clickable
+                  onClick={() => setAspectRatio(r.value)}
+                  sx={{
+                    bgcolor: aspectRatio === r.value ? '#C88A79' : '#EFEBE6',
+                    color: aspectRatio === r.value ? '#FFFFFF' : '#5C4438',
+                    fontWeight: 600,
+                    '&:hover': {
+                      bgcolor: aspectRatio === r.value ? '#A66E5E' : '#E4DDD4',
+                    },
+                  }}
+                />
+              ))}
+            </div>
+          </div>
+        )}
 
         {/* Interactive Crop Viewport */}
         <div
@@ -359,6 +383,11 @@ export function ImageCropModal({
           onTouchEnd={handleMouseUp}
         >
           <canvas ref={canvasRef} className="block w-full max-h-[460px]" />
+          {(folder === 'avatars' || aspectRatio === '1:1') && (
+            <div className="absolute inset-0 pointer-events-none flex items-center justify-center">
+              <div className="w-[82%] aspect-square rounded-full border-2 border-white/80 shadow-[0_0_0_9999px_rgba(0,0,0,0.38)]" />
+            </div>
+          )}
           {!imgElement && !errorMsg && (
             <div className="absolute inset-0 flex items-center justify-center bg-cream-100">
               <CircularProgress size={32} sx={{ color: '#C88A79' }} />
