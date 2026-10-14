@@ -23,12 +23,29 @@ export function useToggleLike(userId?: string | null) {
 
       qc.setQueryData<string[]>(key, next);
 
+      // Optimistically update post likes_count across all cached post queries
+      const delta = nextLiked ? 1 : -1;
+      qc.setQueriesData({ queryKey: qk.posts.all }, (old: any) => {
+        if (!old) return old;
+        if (Array.isArray(old)) {
+          return old.map((p: any) =>
+            p?.id === postId ? { ...p, likes_count: Math.max(0, (p.likes_count || 0) + delta) } : p
+          );
+        }
+        if (typeof old === 'object' && old !== null && 'id' in old && (old as any).id === postId) {
+          const p = old as any;
+          return { ...p, likes_count: Math.max(0, (p.likes_count || 0) + delta) };
+        }
+        return old;
+      });
+
       return { previous };
     },
     onError: (_err, _vars, context) => {
       if (userId && context?.previous) {
         qc.setQueryData(qk.likes.byUser(userId), context.previous);
       }
+      qc.invalidateQueries({ queryKey: qk.posts.all });
     },
     onSettled: () => {
       if (userId) {

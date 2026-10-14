@@ -8,6 +8,7 @@ import AccessTimeIcon from '@mui/icons-material/AccessTime';
 import VisibilityIcon from '@mui/icons-material/Visibility';
 import CalendarTodayIcon from '@mui/icons-material/CalendarToday';
 import ArrowBackIcon from '@mui/icons-material/ArrowBack';
+import FavoriteIcon from '@mui/icons-material/Favorite';
 import { useApp } from '@/lib/store';
 import { usePost, usePosts, useIncrementViews } from '@/features/posts';
 import { useCategories } from '@/features/categories';
@@ -122,7 +123,7 @@ export default function ArticleShowPage() {
               </div>
             </div>
 
-            <div className="flex items-center gap-4 text-xs text-earth-600">
+            <div className="flex flex-wrap items-center gap-4 text-xs text-earth-600">
               <span className="flex items-center gap-1">
                 <CalendarTodayIcon fontSize="small" /> {new Date(post.published_at || post.created_at).toLocaleDateString()}
               </span>
@@ -131,6 +132,9 @@ export default function ArticleShowPage() {
               </span>
               <span className="flex items-center gap-1">
                 <VisibilityIcon fontSize="small" /> {post.views_count} views
+              </span>
+              <span className="flex items-center gap-1 font-semibold text-terracotta-700">
+                <FavoriteIcon sx={{ color: '#E25B45', fontSize: '1rem' }} /> {post.likes_count ?? 0} {post.likes_count === 1 ? (locale === 'fr' ? 'j’aime' : 'like') : (locale === 'fr' ? 'j’aime' : 'likes')}
               </span>
             </div>
           </div>

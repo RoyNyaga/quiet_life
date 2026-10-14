@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import Link from 'next/link';
-import { Card, Typography, Chip, Button, IconButton, Box } from '@mui/material';
+import { Card, Typography, Chip, Button, IconButton, Box, Tooltip } from '@mui/material';
 import BookmarkBorderIcon from '@mui/icons-material/BookmarkBorder';
 import BookmarkIcon from '@mui/icons-material/Bookmark';
 import FavoriteIcon from '@mui/icons-material/Favorite';
@@ -145,9 +145,14 @@ export function ArticleCard({ post, featured = false }: ArticleCardProps) {
                 </Typography>
               </Link>
               <div className="flex items-center gap-1">
-                <IconButton onClick={handleLike} size="small" color={hasLiked ? 'error' : 'default'}>
-                  <FavoriteIcon fontSize="small" />
-                </IconButton>
+                <Tooltip title={`${post.likes_count ?? 0} ${locale === 'fr' ? 'j’aime' : 'likes'}`}>
+                  <span className="flex items-center text-xs font-semibold text-earth-700">
+                    <IconButton onClick={handleLike} size="small" color={hasLiked ? 'error' : 'default'}>
+                      <FavoriteIcon fontSize="small" />
+                    </IconButton>
+                    <span className="text-xs -ml-1 mr-1">{post.likes_count ?? 0}</span>
+                  </span>
+                </Tooltip>
                 <IconButton
                   onClick={() => {
                     if (!user) {

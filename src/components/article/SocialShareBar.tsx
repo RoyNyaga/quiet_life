@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { IconButton, Tooltip, Snackbar, Alert, Box, Chip, Typography } from '@mui/material';
+import { IconButton, Button, Tooltip, Snackbar, Alert, Box, Chip, Typography } from '@mui/material';
 import WhatsAppIcon from '@mui/icons-material/WhatsApp';
 import FacebookIcon from '@mui/icons-material/Facebook';
 import ContentCopyIcon from '@mui/icons-material/ContentCopy';
@@ -71,10 +71,28 @@ export function SocialShareBar({ post }: SocialShareBarProps) {
     <>
       <div className="flex flex-wrap items-center gap-3">
         <Box className="flex items-center gap-1.5 p-1.5 rounded-2xl bg-white border border-cream-200 shadow-sm w-fit">
-          <Tooltip title={t.article.likePost}>
-            <IconButton onClick={handleLike} color={hasLiked ? 'error' : 'default'} size="small">
-              <FavoriteIcon />
-            </IconButton>
+          <Tooltip title={`${post.likes_count ?? 0} ${locale === 'fr' ? 'j’aime' : 'likes'}`}>
+            <Button
+              onClick={handleLike}
+              size="small"
+              startIcon={<FavoriteIcon sx={{ color: hasLiked ? '#E25B45' : '#8C776D', fontSize: '1.15rem' }} />}
+              sx={{
+                minWidth: 'auto',
+                px: 1.5,
+                py: 0.5,
+                borderRadius: '12px',
+                color: hasLiked ? '#E25B45' : '#5C4438',
+                fontWeight: 700,
+                fontSize: '0.85rem',
+                bgcolor: hasLiked ? 'rgba(226, 91, 69, 0.08)' : 'transparent',
+                '&:hover': {
+                  bgcolor: hasLiked ? 'rgba(226, 91, 69, 0.15)' : 'rgba(200, 138, 121, 0.08)',
+                },
+                textTransform: 'none',
+              }}
+            >
+              {post.likes_count ?? 0}
+            </Button>
           </Tooltip>
 
           <Tooltip title={`Share on WhatsApp (${shareLocale.toUpperCase()})`}>
