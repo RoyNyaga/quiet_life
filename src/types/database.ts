@@ -22,6 +22,7 @@ export interface Category {
   description_fr?: string | null;
   icon?: string | null;
   created_at: string;
+  posts_count?: number;
 }
 
 export interface Tag {

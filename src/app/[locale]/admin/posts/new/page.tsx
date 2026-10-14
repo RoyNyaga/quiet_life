@@ -217,7 +217,7 @@ function PostEditorContent() {
               px: 3,
             }}
           >
-            {isSaving ? (editId ? 'Updating...' : 'Publishing...') : (editId ? t.updateArticle : t.saveAndPublish)}
+            {isSaving ? (t.saving || (locale === 'fr' ? 'Enregistrement...' : 'Saving...')) : t.save}
           </Button>
         </div>
       </div>

@@ -50,14 +50,23 @@ export async function GET() {
 
   const { data, error } = await supabase
     .from('categories')
-    .select('*')
+    .select('*, posts(count)')
     .order('created_at', { ascending: true });
 
   if (error) {
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
 
-  return NextResponse.json({ success: true, data });
+  const formatted = (data ?? []).map((cat: any) => {
+    const count = Array.isArray(cat.posts) && cat.posts.length > 0 ? Number(cat.posts[0]?.count ?? 0) : 0;
+    const { posts, ...rest } = cat;
+    return {
+      ...rest,
+      posts_count: count,
+    };
+  });
+
+  return NextResponse.json({ success: true, data: formatted });
 }
 
 export async function POST(request: NextRequest) {

@@ -34,10 +34,17 @@ export async function fetchCategories(): Promise<Category[]> {
   if (supabase) {
     const { data, error } = await supabase
       .from('categories')
-      .select('*')
+      .select('*, posts(count)')
       .order('created_at', { ascending: true });
     if (!error && data && data.length > 0) {
-      return data;
+      return data.map((cat: any) => {
+        const count = Array.isArray(cat.posts) && cat.posts.length > 0 ? Number(cat.posts[0]?.count ?? 0) : 0;
+        const { posts, ...rest } = cat;
+        return {
+          ...rest,
+          posts_count: count,
+        };
+      });
     }
   }
 

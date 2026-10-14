@@ -10,6 +10,7 @@ export function useCreatePost() {
     meta: { successMessage: 'notifications.postCreated' },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: qk.posts.all });
+      qc.invalidateQueries({ queryKey: qk.categories.all });
     },
   });
 }
@@ -21,6 +22,7 @@ export function useUpdatePost() {
     meta: { successMessage: 'notifications.postUpdated' },
     onSuccess: (updated) => {
       qc.invalidateQueries({ queryKey: qk.posts.all });
+      qc.invalidateQueries({ queryKey: qk.categories.all });
       if (updated?.slug) {
         qc.invalidateQueries({ queryKey: qk.posts.detail(updated.slug) });
       }
@@ -35,6 +37,7 @@ export function useDeletePost() {
     meta: { successMessage: 'notifications.postDeleted' },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: qk.posts.all });
+      qc.invalidateQueries({ queryKey: qk.categories.all });
     },
   });
 }
